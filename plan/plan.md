@@ -392,7 +392,18 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
 
 4 bookmark list should be more verbose and show associated metadata
 
-# v2.0.0
+# v0.3.0
+
+- [ ] 1 show description next to title in list and interactive as # ...
+  - create description with flag for adding and editing if not present
+  - show show as text muted color in interactive  and list mode
+- [ ] 2 interactive add
+- [ ] 3 interactive edit
+- [ ] 4 improve bookmark created
+- [ ] 5 improve first call
+  - bookmark config - should check if inited and ask to do so if not
+    - config init should also ask if user would like check / add source to users shellrc file
+# v?
 
 - [ ] 1 Support multiple shell types 
   - example: 
