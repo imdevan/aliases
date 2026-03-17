@@ -75,11 +75,11 @@ init-aur-repo:
 	./scripts/init_aur_repo.sh
 
 update-homebrew-formula VERSION:
-	@echo "🍺 Updating Homebrew formula to version {{VERSION}}..."
+	@echo "🍺 Updating Homebrew formula..."
 	./scripts/update_homebrew_formula.sh {{VERSION}}
 
-update-aur-pkgbuild VERSION:
-	@echo "📦 Updating AUR PKGBUILD to version {{VERSION}}..."
+update-aur-pkgbuild VERSION="":
+	@echo "📦 Updating AUR PKGBUILD..."
 	./scripts/update_aur_pkgbuild.sh {{VERSION}}
 
 # Git tag management
