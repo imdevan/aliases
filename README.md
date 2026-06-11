@@ -59,6 +59,7 @@ See configuration options for more info.
 ```bash
 bookmark                 # Bookmark a file
 bm                       # Interactive bookmark list
+bookmark add             # Interactive form to add a new bookmark
 bookmark config          # View or edit configuration
 bookmark config init     # Generate default config file
 bookmark completion      # Generate shell completion scripts

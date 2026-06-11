@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"bookmark/internal/adapters/editor"
@@ -32,6 +33,7 @@ type rootOptions struct {
 	configPath  string
 	showVersion bool
 	interactive bool
+	add         bool
 	tmux        bool
 	tmuxName    string
 	description string
@@ -119,8 +121,13 @@ func newRootCmd() *cobra.Command {
 			}
 
 			// Interactive mode
-			if opts.interactive || (len(args) == 0 && cfg.InteractiveDefault && !opts.tmux && opts.description == "" && !opts.edit) {
+			if opts.interactive || (len(args) == 0 && cfg.InteractiveDefault && !opts.tmux && opts.description == "" && !opts.edit && !opts.add) {
 				return runInteractive(cmd, opts, cfg)
+			}
+
+			// Interactive add form
+			if opts.add {
+				return runAddForm(cmd, opts, cfg, cwd)
 			}
 
 			// Edit mode
@@ -136,6 +143,7 @@ func newRootCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&opts.configPath, "config", "c", "", "config file path")
 	cmd.Flags().BoolVarP(&opts.showVersion, "version", "v", false, "print version information")
 	cmd.Flags().BoolVarP(&opts.interactive, "interactive", "i", false, "interactive bookmark browser")
+	cmd.Flags().BoolVarP(&opts.add, "add", "a", false, "interactive add bookmark form")
 	cmd.Flags().BoolVarP(&opts.tmux, "tmux", "t", false, "set tmux window name (same as alias)")
 	cmd.Flags().StringVarP(&opts.tmuxName, "tmux-name", "T", "", "custom tmux window name")
 	cmd.Flags().StringVarP(&opts.description, "description", "d", "", "bookmark description")
@@ -149,6 +157,7 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newCompletionCmd())
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newDeleteCmd())
+	cmd.AddCommand(newAddCmd())
 
 	return cmd
 }
@@ -309,6 +318,46 @@ func openEditor(editorName, filePath string, line int) error {
 	return editorAdapter.Open(filePath)
 }
 
+func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd string) error {
+	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
+	defaultAlias := bookmark.GenerateAlias(cwd, cfg.AutoAliasSeparator, cfg.AutoAliasLowercase, cfg.DefaultAliasPartLength)
+
+	theme := ui.ThemeFromConfig(cfg)
+	m := ui.NewBookmarkFormModel(theme, defaultAlias, cwd)
+
+	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
+	p := tea.NewProgram(m, progOpts...)
+	result, err := p.Run()
+	if err != nil {
+		return err
+	}
+
+	fm, ok := result.(ui.BookmarkFormModel)
+	if !ok || !fm.IsCompleted() {
+		fmt.Println(ui.ExitMessage(theme, "Cancelled", true))
+		return nil
+	}
+
+	alias, path, desc, tmuxWindowName, postJumpScript := fm.Values()
+	bm := domain.Bookmark{
+		Alias:          alias,
+		Path:           path,
+		Description:    desc,
+		TmuxWindowName: tmuxWindowName,
+		PostJumpScript: postJumpScript,
+	}
+
+	exists, err := bmManager.Exists(alias)
+	if err != nil {
+		return err
+	}
+	if err := bmManager.Add(bm); err != nil {
+		return err
+	}
+	printSuccess(cmd, alias, path, exists)
+	return nil
+}
+
 func runInteractive(cmd *cobra.Command, opts *rootOptions, cfg domain.Config) error {
 	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
 	bookmarks, err := bmManager.Load()
@@ -413,7 +462,15 @@ type bookmarkItem struct {
 }
 
 func (b bookmarkItem) Title() string {
-	return b.Bookmark.Alias
+	title := b.Bookmark.Alias
+	
+	// Add description next to title with bullet separator in muted color
+	if b.Bookmark.Description != "" {
+		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(b.Config.Muted))
+		title += " " + mutedStyle.Render("• "+b.Bookmark.Description)
+	}
+	
+	return title
 }
 
 func (b bookmarkItem) Description() string {
@@ -425,11 +482,6 @@ func (b bookmarkItem) Description() string {
 		if err == nil && strings.HasPrefix(desc, home) {
 			desc = b.Config.HomeIcon + strings.TrimPrefix(desc, home)
 		}
-	}
-
-	// Add description if present
-	if b.Bookmark.Description != "" {
-		desc = b.Bookmark.Description + " • " + desc
 	}
 
 	return desc

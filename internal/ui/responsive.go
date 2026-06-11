@@ -133,17 +133,8 @@ func (rm *ResponsiveManager) GetContentInsets() (horizontal, vertical int) {
 
 // MaxContentWidth returns the maximum usable content width accounting for padding/borders.
 func (rm *ResponsiveManager) MaxContentWidth() int {
-	switch rm.breakpoint {
-	case BreakpointXS:
-		// No padding, margin, or border
-		return max(rm.width, 20)
-	case BreakpointSM:
-		// Padding only (2)
-		return max(rm.width-2, 20)
-	default:
-		// MD+: padding (2) + border (2) + margin (2)
-		return max(rm.width-6, 20)
-	}
+	h, _ := rm.GetContentInsets()
+	return max(rm.width-h, 20)
 }
 
 func max(a, b int) int {

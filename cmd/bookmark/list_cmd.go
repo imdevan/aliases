@@ -62,23 +62,24 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 
-			// Find max alias length for alignment
+			// Find max alias length for alignment (including description)
 			maxAlias := 0
-			maxPath := 0
 			for _, bm := range bookmarks {
-				if len(bm.Alias) > maxAlias {
-					maxAlias = len(bm.Alias)
+				aliasLen := len(bm.Alias)
+				if bm.Description != "" {
+					aliasLen += len(" # " + bm.Description)
 				}
-				if len(bm.Path) > maxPath {
-					maxPath = len(bm.Path)
+				if aliasLen > maxAlias {
+					maxAlias = aliasLen
 				}
 			}
 
 			for _, bm := range bookmarks {
-				line := fmt.Sprintf("%-*s  %-*s", maxAlias, bm.Alias, maxPath, bm.Path)
+				alias := bm.Alias
 				if bm.Description != "" {
-					line += "  " + bm.Description
+					alias += " # " + bm.Description
 				}
+				line := fmt.Sprintf("%-*s  %s", maxAlias, alias, bm.Path)
 				cmd.Println(line)
 			}
 

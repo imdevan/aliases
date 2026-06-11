@@ -150,8 +150,8 @@ func TestResponsiveManager_MaxContentWidth(t *testing.T) {
 		{40, 38},   // SM: 40 - 2 = 38
 		{60, 54},   // MD: 60 - 6 (padding + border + margin) = 54
 		{70, 64},   // MD: 70 - 6 = 64
-		{80, 74},   // LG: 80 - 6 = 74
-		{100, 94},  // XL: 100 - 6 = 94
+		{80, 72},   // LG: 80 - 8 = 72
+		{100, 91},  // XL: 100 - 9 = 91
 	}
 
 	for _, tt := range tests {

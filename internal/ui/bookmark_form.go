@@ -3,81 +3,140 @@ package ui
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
-// BookmarkFormModel is a form for creating a new bookmark.
-type BookmarkFormModel struct {
-	form  *huh.Form
-	theme Theme
-	alias string
-	path  string
-	desc  string
+const (
+	formAlias = iota
+	formDesc
+	formPath
+	formTmux
+	formScript
+)
+
+var fieldTitles = []string{
+	"Alias",
+	"Description (optional)",
+	"Path",
+	"Tmux Window (optional)",
+	"Post-jump script (optional)",
 }
 
-// NewBookmarkFormModel creates a new bookmark form.
-func NewBookmarkFormModel(theme Theme) BookmarkFormModel {
-	m := BookmarkFormModel{
-		theme: theme,
+var fieldDescs = []string{
+	"Short name for the bookmark",
+	"",
+	"Directory path to bookmark",
+	"Tmux window name to create/switch to",
+	"Script/command to run after jumping",
+}
+
+// BookmarkFormModel is a form for creating a new bookmark.
+type BookmarkFormModel struct {
+	inputs     []textinput.Model
+	focused    int
+	theme      Theme
+	responsive *ResponsiveManager
+	completed  bool
+	cancelled  bool
+}
+
+// NewBookmarkFormModel creates a new bookmark form with optional default values.
+func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) BookmarkFormModel {
+	inputs := make([]textinput.Model, 5)
+
+	inputs[formAlias] = textinput.New()
+	inputs[formAlias].Placeholder = defaultAlias
+	inputs[formAlias].Focus()
+	inputs[formAlias].Prompt = ""
+
+	inputs[formDesc] = textinput.New()
+	inputs[formDesc].Placeholder = "Optional description"
+	inputs[formDesc].Prompt = ""
+
+	inputs[formPath] = textinput.New()
+	inputs[formPath].Placeholder = defaultPath
+	inputs[formPath].Prompt = ""
+
+	inputs[formTmux] = textinput.New()
+	inputs[formTmux].Placeholder = "Optional tmux window name"
+	inputs[formTmux].Prompt = ""
+
+	inputs[formScript] = textinput.New()
+	inputs[formScript].Placeholder = "Optional post-jump script"
+	inputs[formScript].Prompt = ""
+
+	return BookmarkFormModel{
+		inputs:     inputs,
+		focused:    0,
+		theme:      theme,
+		responsive: NewResponsiveManager(80),
 	}
-
-	m.form = huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Alias").
-				Description("Short name for the bookmark").
-				Value(&m.alias).
-				Validate(huh.ValidateNotEmpty()),
-
-			huh.NewInput().
-				Title("Path").
-				Description("Directory path to bookmark").
-				Value(&m.path).
-				Validate(huh.ValidateNotEmpty()),
-
-			huh.NewInput().
-				Title("Description (optional)").
-				Value(&m.desc),
-		),
-	).WithTheme(bookmarkFormHuhTheme(theme))
-
-	return m
 }
 
 // Init initializes the form.
 func (m BookmarkFormModel) Init() tea.Cmd {
-	return m.form.Init()
+	return textinput.Blink
 }
 
 // Update handles messages for the form.
 func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.responsive.SetWidth(msg.Width)
+		// Update inputs width based on content width
+		inputWidth := m.responsive.MaxContentWidth() - 6
+		if inputWidth < 20 {
+			inputWidth = 20
+		}
+		for i := range m.inputs {
+			m.inputs[i].Width = inputWidth
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "ctrl+c":
+			m.cancelled = true
 			return m, tea.Quit
+
+		case "enter":
+			if m.focused == len(m.inputs)-1 {
+				m.completed = true
+				return m, tea.Quit
+			}
+			m.inputs[m.focused].Blur()
+			m.focused++
+			m.inputs[m.focused].Focus()
+			return m, nil
+
+		case "shift+tab", "up":
+			if m.focused > 0 {
+				m.inputs[m.focused].Blur()
+				m.focused--
+				m.inputs[m.focused].Focus()
+			}
+			return m, nil
+
+		case "tab", "down":
+			if m.focused < len(m.inputs)-1 {
+				m.inputs[m.focused].Blur()
+				m.focused++
+				m.inputs[m.focused].Focus()
+			}
+			return m, nil
 		}
 	}
 
 	var cmd tea.Cmd
-	form, formCmd := m.form.Update(msg)
-	if f, ok := form.(*huh.Form); ok {
-		m.form = f
-		cmd = formCmd
-	}
-
-	if m.form.State == huh.StateCompleted {
-		return m, tea.Quit
-	}
-
+	m.inputs[m.focused], cmd = m.inputs[m.focused].Update(msg)
 	return m, cmd
 }
 
 // View renders the form.
 func (m BookmarkFormModel) View() string {
-	if m.form.State == huh.StateCompleted {
+	if m.completed || m.cancelled {
 		return ""
 	}
 
@@ -88,48 +147,93 @@ func (m BookmarkFormModel) View() string {
 
 	help := lipgloss.NewStyle().
 		Foreground(m.theme.Muted).
-		Render("Press Esc to cancel")
+		Render("↑/↓ or tab/shift+tab: navigate • enter: next/submit • esc: cancel")
+
+	// Calculate sliding window for exactly 3 items
+	start := m.focused - 1
+	if start < 0 {
+		start = 0
+	}
+	if start+3 > len(m.inputs) {
+		start = len(m.inputs) - 3
+	}
+	end := start + 3
+
+	var items []string
+	for i := start; i < end; i++ {
+		var itemLines []string
+
+		// Title
+		titleStyle := lipgloss.NewStyle().Bold(true)
+		if i == m.focused {
+			titleStyle = titleStyle.Foreground(m.theme.Secondary)
+		} else {
+			titleStyle = titleStyle.Foreground(m.theme.Text)
+		}
+		itemLines = append(itemLines, titleStyle.Render(fieldTitles[i]))
+
+		// Description
+		if fieldDescs[i] != "" {
+			descStyle := lipgloss.NewStyle().Foreground(m.theme.Muted)
+			itemLines = append(itemLines, descStyle.Render(fieldDescs[i]))
+		}
+
+		// Input wrapped in border
+		// We set the width of the input wrapper to the responsive content width
+		borderWidth := m.responsive.MaxContentWidth() - 2
+		if borderWidth < 22 {
+			borderWidth = 22
+		}
+		inputStyle := lipgloss.NewStyle().
+			Padding(0, 1).
+			Width(borderWidth).
+			BorderStyle(lipgloss.RoundedBorder())
+
+		if i == m.focused {
+			inputStyle = inputStyle.BorderForeground(m.theme.Secondary)
+		} else {
+			inputStyle = inputStyle.BorderForeground(m.theme.Border)
+		}
+
+		inputBox := inputStyle.Render(m.inputs[i].View())
+		itemLines = append(itemLines, inputBox)
+
+		items = append(items, strings.Join(itemLines, "\n"))
+	}
 
 	content := strings.Join([]string{
 		title,
 		"",
-		m.form.View(),
+		strings.Join(items, "\n\n"),
 		"",
 		help,
 	}, "\n")
 
-	return lipgloss.NewStyle().
-		Margin(1, 1).
-		Padding(1, 2).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(m.theme.Border).
-		Render(content)
+	return m.responsive.AdaptiveFrameStyle(m.theme).Render(content)
 }
 
 // Values returns the form values.
-func (m BookmarkFormModel) Values() (alias, path, desc string) {
-	return strings.TrimSpace(m.alias), strings.TrimSpace(m.path), strings.TrimSpace(m.desc)
+func (m BookmarkFormModel) Values() (alias, path, desc, tmuxWindowName, postJumpScript string) {
+	alias = m.inputs[formAlias].Value()
+	if alias == "" {
+		alias = m.inputs[formAlias].Placeholder
+	}
+	path = m.inputs[formPath].Value()
+	if path == "" {
+		path = m.inputs[formPath].Placeholder
+	}
+	desc = m.inputs[formDesc].Value()
+	tmuxWindowName = m.inputs[formTmux].Value()
+	postJumpScript = m.inputs[formScript].Value()
+
+	return strings.TrimSpace(alias),
+		strings.TrimSpace(path),
+		strings.TrimSpace(desc),
+		strings.TrimSpace(tmuxWindowName),
+		strings.TrimSpace(postJumpScript)
 }
 
 // IsCompleted returns true if the form was completed successfully.
 func (m BookmarkFormModel) IsCompleted() bool {
-	return m.form.State == huh.StateCompleted
-}
-
-func bookmarkFormHuhTheme(theme Theme) *huh.Theme {
-	huhTheme := huh.ThemeBase()
-	huhTheme.Focused.Base = lipgloss.NewStyle()
-	huhTheme.Blurred.Base = lipgloss.NewStyle()
-	huhTheme.Focused.Title = lipgloss.NewStyle().
-		Foreground(theme.Secondary).
-		Bold(true)
-	huhTheme.Focused.Description = lipgloss.NewStyle().
-		Foreground(theme.Muted)
-	huhTheme.Focused.TextInput.Cursor = lipgloss.NewStyle().
-		Foreground(theme.Secondary)
-	huhTheme.Focused.TextInput.Placeholder = lipgloss.NewStyle().
-		Foreground(theme.Muted)
-	huhTheme.Focused.TextInput.Prompt = lipgloss.NewStyle().
-		Foreground(theme.Secondary)
-	return huhTheme
+	return m.completed && !m.cancelled
 }
