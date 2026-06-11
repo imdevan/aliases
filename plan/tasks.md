@@ -442,11 +442,11 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
     - config.editor
 
 ## fix interactive add command (bookmark -a)
-- [ ] 1 ui - window width should only extend to end of terminal window (currently keeps going off window)
+- [x] 1 ui - window width should only extend to end of terminal window (currently keeps going off window)
   - app has utilities for detecting window width see default interactive command
-- [ ] 2 ui - wrap inputs with border (and config border color)  
-- [ ] 3 add tmux window input optional
-- [ ] 4 add script input optional
+- [x] 2 ui - wrap inputs with border (and config border color)  
+- [x] 3 add tmux window input optional
+- [x] 4 add script input optional
 
 ## Feature 1: fixes
 - [ ] 4.5 add error color to config use error color for * input cannot be empty on add
