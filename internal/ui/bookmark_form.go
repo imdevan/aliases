@@ -6,6 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"bookmark/internal/domain"
 )
 
 const (
@@ -65,6 +67,44 @@ func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) Bookmar
 
 	inputs[formScript] = textinput.New()
 	inputs[formScript].Placeholder = "Optional post-jump script"
+	inputs[formScript].Prompt = ""
+
+	return BookmarkFormModel{
+		inputs:     inputs,
+		focused:    0,
+		theme:      theme,
+		responsive: NewResponsiveManager(80),
+	}
+}
+
+// NewBookmarkFormModelEdit creates a new bookmark form prefilled with the values of an existing bookmark.
+func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel {
+	inputs := make([]textinput.Model, 5)
+
+	inputs[formAlias] = textinput.New()
+	inputs[formAlias].Placeholder = bm.Alias
+	inputs[formAlias].SetValue(bm.Alias)
+	inputs[formAlias].Focus()
+	inputs[formAlias].Prompt = ""
+
+	inputs[formDesc] = textinput.New()
+	inputs[formDesc].Placeholder = "Optional description"
+	inputs[formDesc].SetValue(bm.Description)
+	inputs[formDesc].Prompt = ""
+
+	inputs[formPath] = textinput.New()
+	inputs[formPath].Placeholder = bm.Path
+	inputs[formPath].SetValue(bm.Path)
+	inputs[formPath].Prompt = ""
+
+	inputs[formTmux] = textinput.New()
+	inputs[formTmux].Placeholder = "Optional tmux window name"
+	inputs[formTmux].SetValue(bm.TmuxWindowName)
+	inputs[formTmux].Prompt = ""
+
+	inputs[formScript] = textinput.New()
+	inputs[formScript].Placeholder = "Optional post-jump script"
+	inputs[formScript].SetValue(bm.PostJumpScript)
 	inputs[formScript].Prompt = ""
 
 	return BookmarkFormModel{

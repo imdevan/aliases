@@ -266,7 +266,7 @@ func printSuccess(cmd *cobra.Command, alias, cwd string, isUpdate bool) {
 func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Config) error {
 	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
 
-	// If no alias provided, just open the bookmarks file
+	// If no alias provided, just open the bookmarks file in editor
 	if len(args) == 0 {
 		return openEditor(cfg.Editor, cfg.BookmarkFile(), 0)
 	}
@@ -279,30 +279,69 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 		return err
 	}
 
-	if !exists {
-		// Create new bookmark and open editor
+	var bm domain.Bookmark
+	if exists {
+		bm, err = bmManager.Get(alias)
+		if err != nil {
+			return err
+		}
+	} else {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get working directory: %w", err)
 		}
+		bm = domain.Bookmark{
+			Alias: alias,
+			Path:  cwd,
+		}
+	}
 
-		bm := buildBookmark(alias, cwd, opts)
-		if err := bmManager.Add(bm); err != nil {
+	theme := ui.ThemeFromConfig(cfg)
+	m := ui.NewBookmarkFormModelEdit(theme, bm)
+
+	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
+	p := tea.NewProgram(m, progOpts...)
+	result, err := p.Run()
+	if err != nil {
+		return err
+	}
+
+	fm, ok := result.(ui.BookmarkFormModel)
+	if !ok || !fm.IsCompleted() {
+		fmt.Println(ui.ExitMessage(theme, "Cancelled", true))
+		return nil
+	}
+
+	newAlias, newPath, newDesc, tmuxWindowName, postJumpScript := fm.Values()
+
+	// If the alias changed and we are editing an existing one, delete the old one
+	if exists && newAlias != alias {
+		if err := bmManager.Delete(alias); err != nil {
 			return err
 		}
-
-		cmd.Printf("✓ Bookmark created: %s → %s\n", alias, cwd)
 	}
 
-	// Find the line number of the bookmark
-	lineNum, err := bmManager.FindBookmarkLine(alias)
-	if err != nil {
-		// If we can't find the line, just open at the beginning
-		lineNum = 0
+	newBm := domain.Bookmark{
+		Alias:          newAlias,
+		Path:           newPath,
+		Description:    newDesc,
+		TmuxWindowName: tmuxWindowName,
+		PostJumpScript: postJumpScript,
+	}
+	if exists {
+		newBm.CreatedAt = bm.CreatedAt
 	}
 
-	// Open bookmarks file in editor at the bookmark line
-	return openEditor(cfg.Editor, cfg.BookmarkFile(), lineNum)
+	if err := bmManager.Add(newBm); err != nil {
+		return err
+	}
+
+	if exists {
+		cmd.Printf("✓ Updated bookmark '%s' → %s\n", newAlias, newPath)
+	} else {
+		cmd.Printf("✓ Created bookmark '%s' → %s\n", newAlias, newPath)
+	}
+	return nil
 }
 
 func openEditor(editorName, filePath string, line int) error {
@@ -530,6 +569,9 @@ type bookmarkListModel struct {
 	confirmModel  *ui.ConfirmationModel
 	addMode       bool
 	addModel      *ui.BookmarkFormModel
+	editMode      bool
+	editModel     *ui.BookmarkFormModel
+	editingAlias  string
 	pendingAction string
 	pendingItem   bookmarkItem
 }
@@ -623,6 +665,77 @@ func (m bookmarkListModel) Init() tea.Cmd {
 }
 
 func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.editMode && m.editModel != nil {
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.responsive.SetWidth(msg.Width)
+			width, height := m.responsive.GetListDimensions(msg.Width, msg.Height)
+			m.list.SetSize(width, height)
+		}
+
+		var cmd tea.Cmd
+		var updatedModel tea.Model
+		updatedModel, cmd = m.editModel.Update(msg)
+		if updatedForm, ok := updatedModel.(ui.BookmarkFormModel); ok {
+			m.editModel = &updatedForm
+		}
+
+		if m.editModel.IsCompleted() {
+			m.editMode = false
+			alias, path, desc, tmuxWindowName, postJumpScript := m.editModel.Values()
+			
+			// Load old bookmark to preserve CreatedAt
+			var oldBm domain.Bookmark
+			var loadErr error
+			oldBm, loadErr = m.manager.Get(m.editingAlias)
+
+			// If the alias changed, delete the old one
+			if m.editingAlias != alias {
+				if err := m.manager.Delete(m.editingAlias); err != nil {
+					m.message = fmt.Sprintf("✗ Failed to delete old bookmark: %s", err)
+					m.editModel = nil
+					return m, nil
+				}
+			}
+
+			bm := domain.Bookmark{
+				Alias:          alias,
+				Path:           path,
+				Description:    desc,
+				TmuxWindowName: tmuxWindowName,
+				PostJumpScript: postJumpScript,
+			}
+			if loadErr == nil {
+				bm.CreatedAt = oldBm.CreatedAt
+			}
+
+			if err := m.manager.Add(bm); err != nil {
+				m.message = fmt.Sprintf("✗ Failed to update: %s", err)
+			} else {
+				m.message = fmt.Sprintf("✓ Updated: %s", alias)
+				bookmarks, err := m.manager.Load()
+				if err == nil {
+					sortBookmarks(bookmarks, m.config.DefaultSortBy)
+					items := make([]list.Item, 0, len(bookmarks))
+					for _, b := range bookmarks {
+						items = append(items, bookmarkItem{Bookmark: b, Config: m.config})
+					}
+					m.list.SetItems(items)
+				}
+			}
+			m.editModel = nil
+			m.updateTitle()
+			return m, nil
+		} else if m.editModel.IsCancelled() {
+			m.editMode = false
+			m.message = "Cancelled"
+			m.editModel = nil
+			return m, nil
+		}
+
+		return m, cmd
+	}
+
 	if m.addMode && m.addModel != nil {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
@@ -717,8 +830,8 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case "enter":
 				if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-					// Execute the alias (which contains the full command)
-					fmt.Println(item.Bookmark.Alias)
+					// Execute the full navigation command directly
+					fmt.Println(m.manager.BuildNavigationCommand(item.Bookmark))
 					return m, tea.Quit
 				}
 			case "e", "n", "d", "D", "a":
@@ -739,8 +852,8 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-				// Execute the alias (which contains the full command)
-				fmt.Println(item.Bookmark.Alias)
+				// Execute the full navigation command directly
+				fmt.Println(m.manager.BuildNavigationCommand(item.Bookmark))
 				return m, tea.Quit
 			}
 		case "a":
@@ -765,35 +878,20 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, formModel.Init()
 		case "e":
 			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-				// Find the line number of the bookmark
-				lineNum, err := m.manager.FindBookmarkLine(item.Bookmark.Alias)
-				if err != nil {
-					lineNum = 0
+				formModel := ui.NewBookmarkFormModelEdit(m.theme, item.Bookmark)
+				m.editModel = &formModel
+				m.editMode = true
+				m.editingAlias = item.Bookmark.Alias
+
+				// Prime it with current window size if we already have it
+				if m.responsive.Width() > 0 {
+					formModel, _ := m.editModel.Update(tea.WindowSizeMsg{Width: m.responsive.Width()})
+					if fm, ok := formModel.(ui.BookmarkFormModel); ok {
+						m.editModel = &fm
+					}
 				}
 
-				// Get editor from config
-				editorName := editor.ResolveCommand(item.Config.Editor)
-				if editorName == "" {
-					m.message = "✗ No editor configured"
-					return m, nil
-				}
-
-				// Open editor
-				editorAdapter := editor.New(editorName)
-				var openErr error
-				if lineNum > 0 {
-					openErr = editorAdapter.OpenAtLine(item.Config.BookmarkFile(), lineNum)
-				} else {
-					openErr = editorAdapter.Open(item.Config.BookmarkFile())
-				}
-
-				if openErr != nil {
-					m.message = fmt.Sprintf("✗ Failed to open editor: %s", openErr)
-					return m, nil
-				}
-
-				// Exit after opening editor
-				return m, tea.Quit
+				return m, formModel.Init()
 			}
 		case "d":
 			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
@@ -842,6 +940,10 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m bookmarkListModel) View() string {
 	if m.addMode && m.addModel != nil {
 		return m.addModel.View()
+	}
+
+	if m.editMode && m.editModel != nil {
+		return m.editModel.View()
 	}
 
 	if m.confirmMode && m.confirmModel != nil {
