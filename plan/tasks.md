@@ -318,13 +318,26 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
     - [x] 2.2.4 ~n: Create new bookmark~ -> moved to v2
     - [x] 2.2.5 q`: or `Esc`: Quit
 
+  - [ ] 2.4 add add in interactive mode
+  - keep interactive list visible behind 
+  - render edit ui on top of list (like a modal)
+  - 4 inputs with default values assigned to current alias values
+    - alias, tmux window, script, description
+  - alpha navigation is disabled while editing ( to prevent names triggering event handlers)
 
-  - [x] 2.3 Navigate to selected bookmark
+  - [ ] 2.3 fix edit in interactive mode
+  - keep interactive list visible behind 
+  - render edit ui on top of list (like a modal)
+  - 4 inputs with default values assigned to current alias values
+    - alias, tmux window, script, description
+  - alpha navigation is disabled while editing ( to prevent names triggering event handlers)
+
+  - [x] 2.5 Navigate to selected bookmark
     - notes: Select bookmark from list to navigate to that directory
     - behavior: Output shell command to stdout for evaluation
     - example output: `cd /home/user/projects/myapp`
 
-  - [x] 2.4 Add interact_alias prop config
+  - [x] 2.6 Add interact_alias prop config
     - interactive_alias = "bm" default
     - if set adds bm function (currently ./bm.sh)
     - add to the top of the bookmarks alias file. adapt for configured shell
@@ -394,10 +407,13 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
 
 # v0.3.0
 
-- [ ] 1 show description next to title in list and interactive as # ...
+- [x] 1 show description next to title in list and interactive as # ...
   - create description with flag for adding and editing if not present
   - show show as text muted color in interactive  and list mode
-- [ ] 2 interactive add
+- [ ] 2 add add command
+  - default: launches interactive add bookmark
+  - use ui/ components
+  - also launched from interactive mode using a hotkey
 - [ ] 3 interactive edit
 - [ ] 4 improve bookmark created
 - [ ] 5 improve first call
@@ -405,7 +421,7 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
     - config init should also ask if user would like check / add source to users shellrc file
 # v?
 
-- [ ] 1 Support multiple shell types 
+- [x] 1 Support multiple shell types 
   - example: 
   ```bash
   shell = "zsh", "nu"
@@ -425,5 +441,12 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
     - config.navigation_tool
     - config.editor
 
-3 Interactive create new bookmark
+## fix interactive add command (bookmark -a)
+- [ ] 1 ui - window width should only extend to end of terminal window (currently keeps going off window)
+  - app has utilities for detecting window width see default interactive command
+- [ ] 2 ui - wrap inputs with border (and config border color)  
+- [ ] 3 add tmux window input optional
+- [ ] 4 add script input optional
 
+## Feature 1: fixes
+- [ ] 4.5 add error color to config use error color for * input cannot be empty on add
