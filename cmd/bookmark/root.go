@@ -312,7 +312,7 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 		return nil
 	}
 
-	newAlias, newPath, newDesc, tmuxWindowName, postJumpScript := fm.Values()
+	newAlias, newPath, newDesc, newFile, tmuxWindowName, postJumpScript := fm.Values()
 
 	// If the alias changed and we are editing an existing one, delete the old one
 	if exists && newAlias != alias {
@@ -325,6 +325,7 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 		Alias:          newAlias,
 		Path:           newPath,
 		Description:    newDesc,
+		File:           newFile,
 		TmuxWindowName: tmuxWindowName,
 		PostJumpScript: postJumpScript,
 	}
@@ -377,11 +378,12 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 		return nil
 	}
 
-	alias, path, desc, tmuxWindowName, postJumpScript := fm.Values()
+	alias, path, desc, file, tmuxWindowName, postJumpScript := fm.Values()
 	bm := domain.Bookmark{
 		Alias:          alias,
 		Path:           path,
 		Description:    desc,
+		File:           file,
 		TmuxWindowName: tmuxWindowName,
 		PostJumpScript: postJumpScript,
 	}
@@ -550,6 +552,9 @@ func (b bookmarkItem) Metadata() string {
 	if b.Bookmark.Execute != "" {
 		parts = append(parts, icon.Script.String()+" "+b.Bookmark.Execute)
 	}
+	if b.Bookmark.PostJumpScript != "" {
+		parts = append(parts, icon.Script.String()+" "+b.Bookmark.PostJumpScript)
+	}
 
 	return strings.Join(parts, " • ")
 }
@@ -682,7 +687,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.editModel.IsCompleted() {
 			m.editMode = false
-			alias, path, desc, tmuxWindowName, postJumpScript := m.editModel.Values()
+			alias, path, desc, file, tmuxWindowName, postJumpScript := m.editModel.Values()
 			
 			// Load old bookmark to preserve CreatedAt
 			var oldBm domain.Bookmark
@@ -702,6 +707,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Alias:          alias,
 				Path:           path,
 				Description:    desc,
+				File:           file,
 				TmuxWindowName: tmuxWindowName,
 				PostJumpScript: postJumpScript,
 			}
@@ -753,11 +759,12 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.addModel.IsCompleted() {
 			m.addMode = false
-			alias, path, desc, tmuxWindowName, postJumpScript := m.addModel.Values()
+			alias, path, desc, file, tmuxWindowName, postJumpScript := m.addModel.Values()
 			bm := domain.Bookmark{
 				Alias:          alias,
 				Path:           path,
 				Description:    desc,
+				File:           file,
 				TmuxWindowName: tmuxWindowName,
 				PostJumpScript: postJumpScript,
 			}
