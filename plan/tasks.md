@@ -318,7 +318,7 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
     - [x] 2.2.4 ~n: Create new bookmark~ -> moved to v2
     - [x] 2.2.5 q`: or `Esc`: Quit
 
-  - [ ] 2.4 add add in interactive mode
+  - [x] 2.4 add add in interactive mode
   - keep interactive list visible behind 
   - render edit ui on top of list (like a modal)
   - 4 inputs with default values assigned to current alias values
@@ -410,7 +410,7 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
 - [x] 1 show description next to title in list and interactive as # ...
   - create description with flag for adding and editing if not present
   - show show as text muted color in interactive  and list mode
-- [ ] 2 add add command
+- [x] 2 add add command
   - default: launches interactive add bookmark
   - use ui/ components
   - also launched from interactive mode using a hotkey
@@ -448,5 +448,13 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
 - [x] 3 add tmux window input optional
 - [x] 4 add script input optional
 
+## fix edit command (bookmark [arg] -e)
+- currently just opens the bookmark file at the alias for the user to update
+- [ ] 1 ui - use the same form as the add command with current values prefilled
+- [ ] 2 should re-source after edit for immediate use
+
+
 ## Feature 1: fixes
 - [ ] 4.5 add error color to config use error color for * input cannot be empty on add
+
+
