@@ -12,25 +12,28 @@ import (
 
 const (
 	formAlias = iota
-	formDesc
 	formPath
+	formDesc
 	formTmux
+	formFile
 	formScript
 )
 
 var fieldTitles = []string{
 	"Alias",
-	"Description (optional)",
 	"Path",
+	"Description (optional)",
 	"Tmux Window (optional)",
+	"File (optional)",
 	"Post-jump script (optional)",
 }
 
 var fieldDescs = []string{
 	"Short name for the bookmark",
-	"",
 	"Directory path to bookmark",
+	"",
 	"Tmux window name to create/switch to",
+	"File to open after navigation",
 	"Script/command to run after jumping",
 }
 
@@ -46,24 +49,28 @@ type BookmarkFormModel struct {
 
 // NewBookmarkFormModel creates a new bookmark form with optional default values.
 func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) BookmarkFormModel {
-	inputs := make([]textinput.Model, 5)
+	inputs := make([]textinput.Model, 6)
 
 	inputs[formAlias] = textinput.New()
 	inputs[formAlias].Placeholder = defaultAlias
 	inputs[formAlias].Focus()
 	inputs[formAlias].Prompt = ""
 
-	inputs[formDesc] = textinput.New()
-	inputs[formDesc].Placeholder = "Optional description"
-	inputs[formDesc].Prompt = ""
-
 	inputs[formPath] = textinput.New()
 	inputs[formPath].Placeholder = defaultPath
 	inputs[formPath].Prompt = ""
 
+	inputs[formDesc] = textinput.New()
+	inputs[formDesc].Placeholder = "Optional description"
+	inputs[formDesc].Prompt = ""
+
 	inputs[formTmux] = textinput.New()
 	inputs[formTmux].Placeholder = "Optional tmux window name"
 	inputs[formTmux].Prompt = ""
+
+	inputs[formFile] = textinput.New()
+	inputs[formFile].Placeholder = "Optional file to open"
+	inputs[formFile].Prompt = ""
 
 	inputs[formScript] = textinput.New()
 	inputs[formScript].Placeholder = "Optional post-jump script"
@@ -79,7 +86,7 @@ func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) Bookmar
 
 // NewBookmarkFormModelEdit creates a new bookmark form prefilled with the values of an existing bookmark.
 func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel {
-	inputs := make([]textinput.Model, 5)
+	inputs := make([]textinput.Model, 6)
 
 	inputs[formAlias] = textinput.New()
 	inputs[formAlias].Placeholder = bm.Alias
@@ -87,20 +94,25 @@ func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel
 	inputs[formAlias].Focus()
 	inputs[formAlias].Prompt = ""
 
-	inputs[formDesc] = textinput.New()
-	inputs[formDesc].Placeholder = "Optional description"
-	inputs[formDesc].SetValue(bm.Description)
-	inputs[formDesc].Prompt = ""
-
 	inputs[formPath] = textinput.New()
 	inputs[formPath].Placeholder = bm.Path
 	inputs[formPath].SetValue(bm.Path)
 	inputs[formPath].Prompt = ""
 
+	inputs[formDesc] = textinput.New()
+	inputs[formDesc].Placeholder = "Optional description"
+	inputs[formDesc].SetValue(bm.Description)
+	inputs[formDesc].Prompt = ""
+
 	inputs[formTmux] = textinput.New()
 	inputs[formTmux].Placeholder = "Optional tmux window name"
 	inputs[formTmux].SetValue(bm.TmuxWindowName)
 	inputs[formTmux].Prompt = ""
+
+	inputs[formFile] = textinput.New()
+	inputs[formFile].Placeholder = "Optional file to open"
+	inputs[formFile].SetValue(bm.File)
+	inputs[formFile].Prompt = ""
 
 	inputs[formScript] = textinput.New()
 	inputs[formScript].Placeholder = "Optional post-jump script"
@@ -151,6 +163,10 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.inputs[m.focused].Focus()
 			return m, nil
 
+		case "alt+enter":
+			m.completed = true
+			return m, tea.Quit
+
 		case "shift+tab", "up":
 			if m.focused > 0 {
 				m.inputs[m.focused].Blur()
@@ -187,7 +203,7 @@ func (m BookmarkFormModel) View() string {
 
 	help := lipgloss.NewStyle().
 		Foreground(m.theme.Muted).
-		Render("↑/↓ or tab/shift+tab: navigate • enter: next/submit • esc: cancel")
+		Render("↑/↓ or tab/shift+tab: navigate • enter: next • alt+enter: submit • esc: cancel")
 
 	// Calculate sliding window for exactly 3 items
 	start := m.focused - 1
@@ -253,7 +269,7 @@ func (m BookmarkFormModel) View() string {
 }
 
 // Values returns the form values.
-func (m BookmarkFormModel) Values() (alias, path, desc, tmuxWindowName, postJumpScript string) {
+func (m BookmarkFormModel) Values() (alias, path, desc, file, tmuxWindowName, postJumpScript string) {
 	alias = m.inputs[formAlias].Value()
 	if alias == "" {
 		alias = m.inputs[formAlias].Placeholder
@@ -263,12 +279,14 @@ func (m BookmarkFormModel) Values() (alias, path, desc, tmuxWindowName, postJump
 		path = m.inputs[formPath].Placeholder
 	}
 	desc = m.inputs[formDesc].Value()
+	file = m.inputs[formFile].Value()
 	tmuxWindowName = m.inputs[formTmux].Value()
 	postJumpScript = m.inputs[formScript].Value()
 
 	return strings.TrimSpace(alias),
 		strings.TrimSpace(path),
 		strings.TrimSpace(desc),
+		strings.TrimSpace(file),
 		strings.TrimSpace(tmuxWindowName),
 		strings.TrimSpace(postJumpScript)
 }
