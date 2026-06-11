@@ -440,6 +440,7 @@ func runBookmarkListing(bookmarks []domain.Bookmark, cfg domain.Config, bmManage
 		theme:      theme,
 		responsive: ui.NewResponsiveManager(80),
 		manager:    bmManager,
+		config:     cfg,
 	}
 
 	model.list.AdditionalShortHelpKeys = model.getShortHelpKeys
@@ -523,9 +524,12 @@ type bookmarkListModel struct {
 	theme         ui.Theme
 	responsive    *ui.ResponsiveManager
 	manager       *bookmark.Manager
+	config        domain.Config
 	message       string
 	confirmMode   bool
 	confirmModel  *ui.ConfirmationModel
+	addMode       bool
+	addModel      *ui.BookmarkFormModel
 	pendingAction string
 	pendingItem   bookmarkItem
 }
@@ -560,6 +564,10 @@ func (m bookmarkListModel) allHelpKeys() []key.Binding {
 		key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "copy cd command"),
+		),
+		key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "add bookmark"),
 		),
 		key.NewBinding(
 			key.WithKeys("e"),
@@ -615,6 +623,58 @@ func (m bookmarkListModel) Init() tea.Cmd {
 }
 
 func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.addMode && m.addModel != nil {
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.responsive.SetWidth(msg.Width)
+			width, height := m.responsive.GetListDimensions(msg.Width, msg.Height)
+			m.list.SetSize(width, height)
+		}
+
+		var cmd tea.Cmd
+		var updatedModel tea.Model
+		updatedModel, cmd = m.addModel.Update(msg)
+		if updatedForm, ok := updatedModel.(ui.BookmarkFormModel); ok {
+			m.addModel = &updatedForm
+		}
+
+		if m.addModel.IsCompleted() {
+			m.addMode = false
+			alias, path, desc, tmuxWindowName, postJumpScript := m.addModel.Values()
+			bm := domain.Bookmark{
+				Alias:          alias,
+				Path:           path,
+				Description:    desc,
+				TmuxWindowName: tmuxWindowName,
+				PostJumpScript: postJumpScript,
+			}
+			if err := m.manager.Add(bm); err != nil {
+				m.message = fmt.Sprintf("✗ Failed to add: %s", err)
+			} else {
+				m.message = fmt.Sprintf("✓ Created: %s", alias)
+				bookmarks, err := m.manager.Load()
+				if err == nil {
+					sortBookmarks(bookmarks, m.config.DefaultSortBy)
+					items := make([]list.Item, 0, len(bookmarks))
+					for _, bm := range bookmarks {
+						items = append(items, bookmarkItem{Bookmark: bm, Config: m.config})
+					}
+					m.list.SetItems(items)
+				}
+			}
+			m.addModel = nil
+			m.updateTitle()
+			return m, nil
+		} else if m.addModel.IsCancelled() {
+			m.addMode = false
+			m.message = "Cancelled"
+			m.addModel = nil
+			return m, nil
+		}
+
+		return m, cmd
+	}
+
 	if m.confirmMode && m.confirmModel != nil {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -661,7 +721,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					fmt.Println(item.Bookmark.Alias)
 					return m, tea.Quit
 				}
-			case "e", "n", "d", "D":
+			case "e", "n", "d", "D", "a":
 				// Block these keys during filtering - let them pass to filter input
 				var cmd tea.Cmd
 				m.list, cmd = m.list.Update(msg)
@@ -683,6 +743,26 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Println(item.Bookmark.Alias)
 				return m, tea.Quit
 			}
+		case "a":
+			cwd, err := os.Getwd()
+			if err != nil {
+				m.message = "✗ Failed to get current directory"
+				return m, nil
+			}
+			defaultAlias := bookmark.GenerateAlias(cwd, m.config.AutoAliasSeparator, m.config.AutoAliasLowercase, m.config.DefaultAliasPartLength)
+			formModel := ui.NewBookmarkFormModel(m.theme, defaultAlias, cwd)
+			m.addModel = &formModel
+			m.addMode = true
+
+			// Prime it with current window size if we already have it
+			if m.responsive.Width() > 0 {
+				formModel, _ := m.addModel.Update(tea.WindowSizeMsg{Width: m.responsive.Width()})
+				if fm, ok := formModel.(ui.BookmarkFormModel); ok {
+					m.addModel = &fm
+				}
+			}
+
+			return m, formModel.Init()
 		case "e":
 			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
 				// Find the line number of the bookmark
@@ -760,6 +840,10 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m bookmarkListModel) View() string {
+	if m.addMode && m.addModel != nil {
+		return m.addModel.View()
+	}
+
 	if m.confirmMode && m.confirmModel != nil {
 		return m.confirmModel.View()
 	}

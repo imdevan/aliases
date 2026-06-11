@@ -213,6 +213,7 @@ func (m *Manager) generateInteractiveWrapper(functionName string) string {
 		wrapper.WriteString("\tif test -n \"$cmd\"\n")
 		wrapper.WriteString("\t\teval $cmd\n")
 		wrapper.WriteString("\tend\n")
+		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
 		wrapper.WriteString("end\n")
 	case "nu", "nushell":
 		wrapper.WriteString(fmt.Sprintf("# Note: Nushell interactive wrapper\n"))
@@ -223,6 +224,7 @@ func (m *Manager) generateInteractiveWrapper(functionName string) string {
 		wrapper.WriteString("\t\t\tnu -c $cmd\n")
 		wrapper.WriteString("\t\t}\n")
 		wrapper.WriteString("\t}\n")
+		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
 		wrapper.WriteString("}\n")
 	default: // bash, zsh, sh
 		wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
@@ -230,6 +232,7 @@ func (m *Manager) generateInteractiveWrapper(functionName string) string {
 		wrapper.WriteString("\tif [[ -n \"$cmd\" ]]; then\n")
 		wrapper.WriteString("\t\teval \"$cmd\"\n")
 		wrapper.WriteString("\tfi\n")
+		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
 		wrapper.WriteString("}\n")
 	}
 

@@ -237,3 +237,8 @@ func (m BookmarkFormModel) Values() (alias, path, desc, tmuxWindowName, postJump
 func (m BookmarkFormModel) IsCompleted() bool {
 	return m.completed && !m.cancelled
 }
+
+// IsCancelled returns true if the form was cancelled.
+func (m BookmarkFormModel) IsCancelled() bool {
+	return m.cancelled
+}
