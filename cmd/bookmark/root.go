@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	overlay "github.com/floatpane/bubble-overlay"
 	"github.com/spf13/cobra"
 
 	"bookmark/internal/adapters/editor"
@@ -564,21 +565,24 @@ func (b bookmarkItem) FilterValue() string {
 }
 
 type bookmarkListModel struct {
-	list          list.Model
-	theme         ui.Theme
-	responsive    *ui.ResponsiveManager
-	manager       *bookmark.Manager
-	config        domain.Config
-	message       string
-	confirmMode   bool
-	confirmModel  *ui.ConfirmationModel
-	addMode       bool
-	addModel      *ui.BookmarkFormModel
-	editMode      bool
-	editModel     *ui.BookmarkFormModel
-	editingAlias  string
-	pendingAction string
-	pendingItem   bookmarkItem
+	list            list.Model
+	theme           ui.Theme
+	responsive      *ui.ResponsiveManager
+	manager         *bookmark.Manager
+	config          domain.Config
+	message         string
+	confirmMode     bool
+	confirmModel    *ui.ConfirmationModel
+	addMode         bool
+	addModel        *ui.BookmarkFormModel
+	editMode        bool
+	editModel       *ui.BookmarkFormModel
+	editingAlias    string
+	pendingAction   string
+	pendingItem     bookmarkItem
+	pendingBookmark *domain.Bookmark
+	screenW         int
+	screenH         int
 }
 
 func (m *bookmarkListModel) updateTitle() {
@@ -673,9 +677,17 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.editMode && m.editModel != nil {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
+			m.screenW = msg.Width
+			m.screenH = msg.Height
 			m.responsive.SetWidth(msg.Width)
 			width, height := m.responsive.GetListDimensions(msg.Width, msg.Height)
 			m.list.SetSize(width, height)
+			mw, mh := modalDimensions(msg.Width, msg.Height)
+			updatedForm, _ := m.editModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
+			if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+				m.editModel = &fm
+			}
+			return m, nil
 		}
 
 		var cmd tea.Cmd
@@ -719,15 +731,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = fmt.Sprintf("✗ Failed to update: %s", err)
 			} else {
 				m.message = fmt.Sprintf("✓ Updated: %s", alias)
-				bookmarks, err := m.manager.Load()
-				if err == nil {
-					sortBookmarks(bookmarks, m.config.DefaultSortBy)
-					items := make([]list.Item, 0, len(bookmarks))
-					for _, b := range bookmarks {
-						items = append(items, bookmarkItem{Bookmark: b, Config: m.config})
-					}
-					m.list.SetItems(items)
-				}
+				m.reloadList()
 			}
 			m.editModel = nil
 			m.updateTitle()
@@ -745,9 +749,17 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.addMode && m.addModel != nil {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
+			m.screenW = msg.Width
+			m.screenH = msg.Height
 			m.responsive.SetWidth(msg.Width)
 			width, height := m.responsive.GetListDimensions(msg.Width, msg.Height)
 			m.list.SetSize(width, height)
+			mw, mh := modalDimensions(msg.Width, msg.Height)
+			updatedForm, _ := m.addModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
+			if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+				m.addModel = &fm
+			}
+			return m, nil
 		}
 
 		var cmd tea.Cmd
@@ -768,21 +780,30 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				TmuxWindowName: tmuxWindowName,
 				PostJumpScript: postJumpScript,
 			}
+			m.addModel = nil
+
+			// Check for existing bookmark — show overwrite confirmation if needed
+			exists, _ := m.manager.Exists(alias)
+			if exists {
+				m.pendingAction = "Overwrite"
+				m.pendingBookmark = &bm
+				existing, _ := m.manager.Get(alias)
+				confirmModel := ui.NewConfirmationModel(
+					"Overwrite Bookmark",
+					fmt.Sprintf("'%s → %s' exists. Overwrite?", alias, existing.Path),
+					m.theme,
+				)
+				m.confirmModel = &confirmModel
+				m.confirmMode = true
+				return m, confirmModel.Init()
+			}
+
 			if err := m.manager.Add(bm); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to add: %s", err)
 			} else {
 				m.message = fmt.Sprintf("✓ Created: %s", alias)
-				bookmarks, err := m.manager.Load()
-				if err == nil {
-					sortBookmarks(bookmarks, m.config.DefaultSortBy)
-					items := make([]list.Item, 0, len(bookmarks))
-					for _, bm := range bookmarks {
-						items = append(items, bookmarkItem{Bookmark: bm, Config: m.config})
-					}
-					m.list.SetItems(items)
-				}
+				m.reloadList()
 			}
-			m.addModel = nil
 			m.updateTitle()
 			return m, nil
 		} else if m.addModel.IsCancelled() {
@@ -822,6 +843,8 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.screenW = msg.Width
+		m.screenH = msg.Height
 		m.responsive.SetWidth(msg.Width)
 		width, height := m.responsive.GetListDimensions(msg.Width, msg.Height)
 		m.list.SetSize(width, height)
@@ -874,10 +897,10 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addModel = &formModel
 			m.addMode = true
 
-			// Prime it with current window size if we already have it
-			if m.responsive.Width() > 0 {
-				formModel, _ := m.addModel.Update(tea.WindowSizeMsg{Width: m.responsive.Width()})
-				if fm, ok := formModel.(ui.BookmarkFormModel); ok {
+			if m.screenW > 0 {
+				mw, mh := modalDimensions(m.screenW, m.screenH)
+				updatedForm, _ := m.addModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
+				if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
 					m.addModel = &fm
 				}
 			}
@@ -890,10 +913,10 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editMode = true
 				m.editingAlias = item.Bookmark.Alias
 
-				// Prime it with current window size if we already have it
-				if m.responsive.Width() > 0 {
-					formModel, _ := m.editModel.Update(tea.WindowSizeMsg{Width: m.responsive.Width()})
-					if fm, ok := formModel.(ui.BookmarkFormModel); ok {
+				if m.screenW > 0 {
+					mw, mh := modalDimensions(m.screenW, m.screenH)
+					updatedForm, _ := m.editModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
+					if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
 						m.editModel = &fm
 					}
 				}
@@ -945,25 +968,50 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m bookmarkListModel) View() string {
-	if m.addMode && m.addModel != nil {
-		return m.addModel.View()
-	}
-
-	if m.editMode && m.editModel != nil {
-		return m.editModel.View()
-	}
-
-	if m.confirmMode && m.confirmModel != nil {
-		return m.confirmModel.View()
-	}
-
-	listView := m.list.View()
+	listView := m.responsive.FullWidthFrameStyle(m.theme).Render(m.list.View())
 
 	if m.message != "" {
 		listView = listView + "\n\n" + m.message
 	}
 
-	return m.responsive.AdaptiveFrameStyle(m.theme).Render(listView)
+	if m.addMode && m.addModel != nil {
+		return overlay.Center(listView, m.addModel.View(), m.screenW, m.screenH)
+	}
+
+	if m.editMode && m.editModel != nil {
+		return overlay.Center(listView, m.editModel.View(), m.screenW, m.screenH)
+	}
+
+	if m.confirmMode && m.confirmModel != nil {
+		return overlay.Center(listView, m.confirmModel.View(), m.screenW, m.screenH)
+	}
+
+	return listView
+}
+
+func (m *bookmarkListModel) reloadList() {
+	bookmarks, err := m.manager.Load()
+	if err == nil {
+		sortBookmarks(bookmarks, m.config.DefaultSortBy)
+		items := make([]list.Item, 0, len(bookmarks))
+		for _, b := range bookmarks {
+			items = append(items, bookmarkItem{Bookmark: b, Config: m.config})
+		}
+		m.list.SetItems(items)
+	}
+}
+
+func modalDimensions(screenW, screenH int) (width, height int) {
+	const minW, minH = 80, 20
+	width = screenW * 75 / 100
+	if width < minW {
+		width = minW
+	}
+	height = screenH * 80 / 100
+	if height < minH {
+		height = minH
+	}
+	return
 }
 
 func (m bookmarkListModel) executeAction() (tea.Model, tea.Cmd) {
@@ -986,6 +1034,17 @@ func (m bookmarkListModel) executeAction() (tea.Model, tea.Cmd) {
 			}
 			m.list.SetItems(filtered)
 			m.updateTitle()
+		}
+	case "Overwrite":
+		if m.pendingBookmark != nil {
+			if err := m.manager.Add(*m.pendingBookmark); err != nil {
+				m.message = fmt.Sprintf("✗ Failed to overwrite: %s", err)
+			} else {
+				m.message = fmt.Sprintf("✓ Overwritten: %s", m.pendingBookmark.Alias)
+				m.reloadList()
+				m.updateTitle()
+			}
+			m.pendingBookmark = nil
 		}
 	}
 	m.pendingAction = ""
