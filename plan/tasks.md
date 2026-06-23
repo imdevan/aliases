@@ -450,8 +450,8 @@ echo "source $bookmark_file" >> ."$bookarm_shell"rc
 
 ## fix edit command (bookmark [arg] -e)
 - currently just opens the bookmark file at the alias for the user to update
-- [ ] 1 ui - use the same form as the add command with current values prefilled
-- [ ] 2 should re-source after edit for immediate use
+- [x] 1 ui - use the same form as the add command with current values prefilled
+- [x] 2 should re-source after edit for immediate use
 
 
 ## Feature 1: fixes
