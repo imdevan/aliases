@@ -86,26 +86,54 @@ func (rm *ResponsiveManager) AdaptiveFrameStyle(theme Theme) lipgloss.Style {
 	style := lipgloss.NewStyle()
 
 	if rm.breakpoint == BreakpointXS {
-		// Extra small: no padding, no margin, no border
 		return style
 	} else if rm.breakpoint == BreakpointSM {
-		// Small: padding only, no margin, no border
 		return style.Padding(1, 1)
 	} else if rm.breakpoint == BreakpointMD || rm.breakpoint == BreakpointLG {
-		// MD, LG
+		const (
+			marginH  = 1
+			borderH  = 1
+			paddingL = 1
+			paddingR = 2
+		)
 		return style.
-			Padding(1, 2, 1, 1).
-			Margin(1, 1).
+			Padding(1, paddingR, 1, paddingL).
+			Margin(1, marginH).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border)
 	} else {
-		// XL: full styling
+		const (
+			marginH  = 1
+			borderH  = 1
+			paddingL = 1
+			paddingR = 4
+		)
 		return style.
-			Padding(1, 4, 1, 1).
-			Margin(1, 1).
+			Padding(1, paddingR, 1, paddingL).
+			Margin(1, marginH).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border)
 	}
+}
+
+// FullWidthFrameStyle returns AdaptiveFrameStyle with an explicit width so the
+// frame stretches to fill the terminal window.
+func (rm *ResponsiveManager) FullWidthFrameStyle(theme Theme) lipgloss.Style {
+	base := rm.AdaptiveFrameStyle(theme)
+	if rm.breakpoint < BreakpointMD {
+		return base
+	}
+	const (
+		marginH  = 1
+		borderH  = 1
+		paddingL = 1
+	)
+	paddingR := 2
+	if rm.breakpoint == BreakpointXL {
+		paddingR = 4
+	}
+	w := max(rm.width-marginH*2-borderH*2-paddingL-paddingR, 20)
+	return base.Width(w)
 }
 
 // GetContentInsets returns the horizontal and vertical insets for content
