@@ -26,7 +26,11 @@
 - [x] 2.4 validate form fields on blur
 
 ## Feature 3: improve bookmark confirmation messages
-- [ ] 3.1 add config  plain_text = "false" | "true"
+- [x] 3.1 add config  plain_text = "false" | "true"
+  - [x] 3.1.1 add `PlainText bool` field to `domain.Config` with `toml:"plain_text"`
+  - [x] 3.1.2 default `false` in `DefaultConfig()`
+  - [x] 3.1.3 add `PlainText *bool` to `partialConfig` and `applyPartial` in `config/manager.go`
+  - [x] 3.1.4 add commented entry to `renderConfigTemplate` in `config_init.go`
 - when true: output confirmation messages, errors, 
 - when false (default) show pretty outputs keep as is
 - all of the following changes apply when plain_text is false:
