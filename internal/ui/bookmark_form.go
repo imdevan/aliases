@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	bm "bookmark/internal/bookmark"
 	"bookmark/internal/domain"
 )
 
@@ -39,13 +40,14 @@ var fieldDescs = []string{
 
 // BookmarkFormModel is a form for creating a new bookmark.
 type BookmarkFormModel struct {
-	inputs     []textinput.Model
-	focused    int
-	theme      Theme
-	responsive *ResponsiveManager
-	completed  bool
-	cancelled  bool
-	title      string
+	inputs           []textinput.Model
+	focused          int
+	theme            Theme
+	responsive       *ResponsiveManager
+	completed        bool
+	cancelled        bool
+	title            string
+	validationErrors map[int]string
 }
 
 // WithTitle sets a custom title for the form model.
@@ -53,7 +55,6 @@ func (m BookmarkFormModel) WithTitle(title string) BookmarkFormModel {
 	m.title = title
 	return m
 }
-
 
 // NewBookmarkFormModel creates a new bookmark form with optional default values.
 func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) BookmarkFormModel {
@@ -85,11 +86,12 @@ func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) Bookmar
 	inputs[formScript].Prompt = ""
 
 	return BookmarkFormModel{
-		inputs:     inputs,
-		focused:    0,
-		theme:      theme,
-		responsive: NewResponsiveManager(80),
-		title:      "Add Bookmark",
+		inputs:           inputs,
+		focused:          0,
+		theme:            theme,
+		responsive:       NewResponsiveManager(80),
+		title:            "Add Bookmark",
+		validationErrors: make(map[int]string),
 	}
 }
 
@@ -129,17 +131,60 @@ func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel
 	inputs[formScript].Prompt = ""
 
 	return BookmarkFormModel{
-		inputs:     inputs,
-		focused:    0,
-		theme:      theme,
-		responsive: NewResponsiveManager(80),
-		title:      "Edit Bookmark",
+		inputs:           inputs,
+		focused:          0,
+		theme:            theme,
+		responsive:       NewResponsiveManager(80),
+		title:            "Edit Bookmark",
+		validationErrors: make(map[int]string),
 	}
 }
 
 // Init initializes the form.
 func (m BookmarkFormModel) Init() tea.Cmd {
 	return textinput.Blink
+}
+
+func (m *BookmarkFormModel) validateField(index int) bool {
+	delete(m.validationErrors, index)
+
+	val := m.inputs[index].Value()
+	if val == "" {
+		val = m.inputs[index].Placeholder
+	}
+	val = strings.TrimSpace(val)
+
+	switch index {
+	case formAlias:
+		if val == "" {
+			m.validationErrors[formAlias] = "* Alias cannot be empty"
+			return false
+		}
+		if !bm.IsValidAlias(val) {
+			m.validationErrors[formAlias] = "* Alias must contain only alphanumeric characters, hyphens, and underscores"
+			return false
+		}
+		if bm.IsReservedKeyword(val) {
+			m.validationErrors[formAlias] = "* Alias cannot be a shell reserved keyword"
+			return false
+		}
+	case formPath:
+		if val == "" {
+			m.validationErrors[formPath] = "* Path cannot be empty"
+			return false
+		}
+	}
+	return true
+}
+
+func (m *BookmarkFormModel) validateAll() bool {
+	valid := true
+	for i := range m.inputs {
+		if !m.validateField(i) {
+			valid = false
+		}
+	}
+	return valid
 }
 
 // Update handles messages for the form.
@@ -164,9 +209,25 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
+			// Validate current field first
+			if !m.validateField(m.focused) {
+				return m, nil
+			}
 			if m.focused == len(m.inputs)-1 {
-				m.completed = true
-				return m, tea.Quit
+				if m.validateAll() {
+					m.completed = true
+					return m, tea.Quit
+				}
+				// Focus first invalid field
+				for i := range m.inputs {
+					if _, exists := m.validationErrors[i]; exists {
+						m.inputs[m.focused].Blur()
+						m.focused = i
+						m.inputs[m.focused].Focus()
+						break
+					}
+				}
+				return m, nil
 			}
 			m.inputs[m.focused].Blur()
 			m.focused++
@@ -174,8 +235,20 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "alt+enter":
-			m.completed = true
-			return m, tea.Quit
+			if m.validateAll() {
+				m.completed = true
+				return m, tea.Quit
+			}
+			// Focus first invalid field
+			for i := range m.inputs {
+				if _, exists := m.validationErrors[i]; exists {
+					m.inputs[m.focused].Blur()
+					m.focused = i
+					m.inputs[m.focused].Focus()
+					break
+				}
+			}
+			return m, nil
 
 		case "shift+tab", "up":
 			if m.focused > 0 {
@@ -242,6 +315,14 @@ func (m BookmarkFormModel) View() string {
 		}
 		itemLines = append(itemLines, titleStyle.Render(fieldTitles[i]))
 
+		// Validation Error (using m.theme.Error)
+		if errMsg, exists := m.validationErrors[i]; exists && errMsg != "" {
+			errStyle := lipgloss.NewStyle().
+				Foreground(m.theme.Error).
+				Bold(true)
+			itemLines = append(itemLines, errStyle.Render(errMsg))
+		}
+
 		// Description
 		if fieldDescs[i] != "" {
 			descStyle := lipgloss.NewStyle().Foreground(m.theme.Muted)
@@ -259,7 +340,9 @@ func (m BookmarkFormModel) View() string {
 			Width(borderWidth).
 			BorderStyle(lipgloss.RoundedBorder())
 
-		if i == m.focused {
+		if _, exists := m.validationErrors[i]; exists {
+			inputStyle = inputStyle.BorderForeground(m.theme.Error)
+		} else if i == m.focused {
 			inputStyle = inputStyle.BorderForeground(m.theme.Secondary)
 		} else {
 			inputStyle = inputStyle.BorderForeground(m.theme.Border)
