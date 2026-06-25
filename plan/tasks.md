@@ -20,7 +20,9 @@
 - "Updated:", "Cancelled", etc
 
 ## Feature 2: fixes
-- [ ] 2.1 add error color to config use error color for * input cannot be empty on add
+- [x] 2.1 bookmark add should use the same form as interactive add bookmark (and bookmark edit)
+- [ ] 2.3 add error color to config use error color for form validation errors 
+  - e.g. * input cannot be empty on add / edit
 
 ## Feature 3: improve bookmark add created 
 - [ ] 3.1 border
@@ -60,3 +62,9 @@ bm() {
 }
 
 ```
+## Feature 7: bookmark sync
+- [ ] 7.1 sync to _
+  - [ ] 7.1.1 sync from the current config to shell 
+  - [ ] 7.1.2 
+- [ ] 7.2 sync from _
+
