@@ -61,11 +61,11 @@ func TestManager_FunctionWrapperGeneration(t *testing.T) {
 			wantFunction:  "bookmark() {",
 		},
 		{
-			name:          "nushell skips wrapper",
+			name:          "nushell with default function name",
 			shell:         "nu",
 			functionAlias: "true",
 			wantWrapper:   true,
-			wantFunction:  "# Note: Nushell doesn't support function wrappers",
+			wantFunction:  "def --wrapped bookmark",
 		},
 	}
 

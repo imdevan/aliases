@@ -186,8 +186,9 @@ func (m *Manager) generateFunctionWrapper(functionName string) string {
 		wrapper.WriteString(fmt.Sprintf("\tcommand %s $argv; and source %s\n", functionName, m.filePath))
 		wrapper.WriteString("end\n")
 	case "nu", "nushell":
-		// Nushell doesn't support this pattern well, skip wrapper
-		wrapper.WriteString(fmt.Sprintf("# Note: Nushell doesn't support function wrappers. Please source %s manually after updates.\n", m.filePath))
+		wrapper.WriteString(fmt.Sprintf("def --wrapped %s [...args] {\n", functionName))
+		wrapper.WriteString(fmt.Sprintf("\t^%s ...$args\n", functionName))
+		wrapper.WriteString("}\n")
 	default: // bash, zsh, sh
 		wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
 		wrapper.WriteString(fmt.Sprintf("\tcommand %s \"$@\" && source %s\n", functionName, m.filePath))
@@ -221,10 +222,18 @@ func (m *Manager) generateInteractiveWrapper(functionName string) string {
 		wrapper.WriteString("\twith-env {CLICOLOR_FORCE: \"1\"} {\n")
 		wrapper.WriteString("\t\tlet cmd = (bookmark -i)\n")
 		wrapper.WriteString("\t\tif ($cmd | is-not-empty) {\n")
-		wrapper.WriteString("\t\t\tnu -c $cmd\n")
+		wrapper.WriteString("\t\t\tlet parts = ($cmd | split row ';')\n")
+		wrapper.WriteString("\t\t\tfor part in $parts {\n")
+		wrapper.WriteString("\t\t\t\tlet trimmed = ($part | str trim)\n")
+		wrapper.WriteString("\t\t\t\tif ($trimmed | str starts-with \"cd \") {\n")
+		wrapper.WriteString("\t\t\t\t\tlet path = ($trimmed | str replace \"cd \" \"\" | str trim | str replace -r \"^['\\\"]\" \"\" | str replace -r \"['\\\"]$\" \"\")\n")
+		wrapper.WriteString("\t\t\t\t\tcd $path\n")
+		wrapper.WriteString("\t\t\t\t} else {\n")
+		wrapper.WriteString("\t\t\t\t\tnu -c $trimmed\n")
+		wrapper.WriteString("\t\t\t\t}\n")
+		wrapper.WriteString("\t\t\t}\n")
 		wrapper.WriteString("\t\t}\n")
 		wrapper.WriteString("\t}\n")
-		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
 		wrapper.WriteString("}\n")
 	default: // bash, zsh, sh
 		wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
@@ -271,7 +280,11 @@ func (m *Manager) BuildNavigationCommand(bm domain.Bookmark) string {
 		parts = append(parts, fmt.Sprintf("%s '%s'", m.editor, bm.File))
 	}
 
-	return strings.Join(parts, " && ")
+	joinWord := " && "
+	if m.shell == "nu" || m.shell == "nushell" {
+		joinWord = "; "
+	}
+	return strings.Join(parts, joinWord)
 }
 
 // Add creates or updates a bookmark.
@@ -385,13 +398,13 @@ func GenerateAlias(path string, separator string, lowercase bool, partLength int
 			if i > 0 && separator != "" {
 				alias.WriteString(separator)
 			}
-			
+
 			// Take up to partLength characters from this part
 			endIdx := partLength
 			if endIdx > len(part) {
 				endIdx = len(part)
 			}
-			
+
 			partStr := part[:endIdx]
 			if lowercase {
 				partStr = strings.ToLower(partStr)
