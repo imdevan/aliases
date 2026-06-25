@@ -23,6 +23,7 @@ type Config struct {
 	Border               string `toml:"border"`
 	Error                string `toml:"error"`
 	InteractiveDefault   bool   `toml:"interactive_default"`
+	PlainText            bool   `toml:"plain_text"`
 	ListSpacing          string `toml:"list_spacing"`
 	
 	// Bookmark settings
@@ -59,6 +60,7 @@ func DefaultConfig() Config {
 		Border:               "08",
 		Error:                "01",
 		InteractiveDefault:   false,
+		PlainText:            false,
 		ListSpacing:          "space",
 		BookmarkLocation:     bookmarkLocation,
 		NavigationTool:       "cd",
