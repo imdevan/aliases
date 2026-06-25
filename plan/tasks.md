@@ -14,7 +14,7 @@
   - [x] 1.3.1 edit: Edit bookmark
   - [x] 1.3.2 edit, but no bookmark found: '' Not Found, Add Bookmark
   - [x] 1.3.3 add: Add bookmark
-- [ ] 1.4 remove the confirmation messages for add, edit, and delete in interactive mode. 
+- [x] 1.4 remove the confirmation messages for add, edit, and delete in interactive mode. 
 - when listview is open
 - when called on their own ineractively is okay
 - "Updated:", "Cancelled", etc
@@ -39,7 +39,7 @@
   - if no: prompt user if they would like to add it
 
 ## Feature 6: nu, fish, bash, aliases functions
-- [ ] 6.1 add alias functions like those in the zsh implementation. 
+- [x] 6.1 add alias functions like those in the zsh implementation. 
   - the bellow should work the the nu and fish implementations (but account for those shell syntax differences)
 ~/.bookmarks/bookmarks.sh:4
 ```bash
