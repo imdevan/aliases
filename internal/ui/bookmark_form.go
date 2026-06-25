@@ -252,6 +252,7 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "shift+tab", "up":
 			if m.focused > 0 {
+				m.validateField(m.focused)
 				m.inputs[m.focused].Blur()
 				m.focused--
 				m.inputs[m.focused].Focus()
@@ -260,6 +261,7 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "tab", "down":
 			if m.focused < len(m.inputs)-1 {
+				m.validateField(m.focused)
 				m.inputs[m.focused].Blur()
 				m.focused++
 				m.inputs[m.focused].Focus()
