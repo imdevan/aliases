@@ -304,3 +304,26 @@ func TestExpandPath(t *testing.T) {
 		})
 	}
 }
+
+func TestManager_ReservedAlias(t *testing.T) {
+	tempFile, err := os.CreateTemp("", "bookmarks-test-*.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tempFile.Name())
+	tempFile.Close()
+
+	m := NewManager(tempFile.Name(), "bash", "cd", "nvim", "true", "bm")
+
+	reservedWords := []string{"fi", "if", "for", "while", "else", "function"}
+	for _, word := range reservedWords {
+		bm := domain.Bookmark{
+			Alias: word,
+			Path:  "/tmp",
+		}
+		err := m.Add(bm)
+		if err != ErrReservedAlias {
+			t.Errorf("expected ErrReservedAlias when adding bookmark with alias %q, got %v", word, err)
+		}
+	}
+}
