@@ -506,13 +506,13 @@ type bookmarkItem struct {
 
 func (b bookmarkItem) Title() string {
 	title := b.Bookmark.Alias
-	
+
 	// Add description next to title with bullet separator in muted color
 	if b.Bookmark.Description != "" {
 		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(b.Config.Muted))
 		title += " " + mutedStyle.Render("• "+b.Bookmark.Description)
 	}
-	
+
 	return title
 }
 
@@ -700,7 +700,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.editModel.IsCompleted() {
 			m.editMode = false
 			alias, path, desc, file, tmuxWindowName, postJumpScript := m.editModel.Values()
-			
+
 			// Load old bookmark to preserve CreatedAt
 			var oldBm domain.Bookmark
 			var loadErr error
@@ -730,7 +730,6 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := m.manager.Add(bm); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to update: %s", err)
 			} else {
-				m.message = fmt.Sprintf("✓ Updated: %s", alias)
 				m.reloadList()
 			}
 			m.editModel = nil
@@ -738,7 +737,6 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		} else if m.editModel.IsCancelled() {
 			m.editMode = false
-			m.message = "Cancelled"
 			m.editModel = nil
 			return m, nil
 		}
@@ -801,14 +799,12 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := m.manager.Add(bm); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to add: %s", err)
 			} else {
-				m.message = fmt.Sprintf("✓ Created: %s", alias)
 				m.reloadList()
 			}
 			m.updateTitle()
 			return m, nil
 		} else if m.addModel.IsCancelled() {
 			m.addMode = false
-			m.message = "Cancelled"
 			m.addModel = nil
 			return m, nil
 		}
@@ -829,7 +825,9 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if confirmed {
 							return m.executeAction()
 						} else {
-							m.message = fmt.Sprintf("%s cancelled", m.pendingAction)
+							if m.pendingAction != "Delete" {
+								m.message = fmt.Sprintf("%s cancelled", m.pendingAction)
+							}
 							m.pendingAction = ""
 							return m, nil
 						}
@@ -942,8 +940,6 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err := m.manager.Delete(item.Bookmark.Alias); err != nil {
 					m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
 				} else {
-					m.message = fmt.Sprintf("✓ Deleted: %s", item.Bookmark.Alias)
-
 					// Remove from list
 					items := m.list.Items()
 					filtered := make([]list.Item, 0, len(items))
@@ -967,6 +963,26 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// faintify re-injects the faint escape after every reset embedded in s, since a single
+// wrapping Faint style is cancelled by any reset sequence the content already contains.
+func faintify(s string) string {
+	const faintSeq = "\x1b[2m"
+	const resetSeq = "\x1b[0m"
+	return faintSeq + strings.ReplaceAll(s, resetSeq, resetSeq+faintSeq) + resetSeq
+}
+
+// resetEachLine forces a clean SGR reset at the start of every line, since
+// overlay.Center's Line() resets SGR after pasting the popup but not before it,
+// letting the faded background's trailing escape state bleed into the popup itself.
+func resetEachLine(s string) string {
+	const resetSeq = "\x1b[0m"
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = resetSeq + line
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (m bookmarkListModel) View() string {
 	listView := m.responsive.FullWidthFrameStyle(m.theme).Render(m.list.View())
 
@@ -975,15 +991,15 @@ func (m bookmarkListModel) View() string {
 	}
 
 	if m.addMode && m.addModel != nil {
-		return overlay.Center(listView, m.addModel.View(), m.screenW, m.screenH)
+		return overlay.Center(faintify(listView), resetEachLine(m.addModel.View()), m.screenW, m.screenH)
 	}
 
 	if m.editMode && m.editModel != nil {
-		return overlay.Center(listView, m.editModel.View(), m.screenW, m.screenH)
+		return overlay.Center(faintify(listView), resetEachLine(m.editModel.View()), m.screenW, m.screenH)
 	}
 
 	if m.confirmMode && m.confirmModel != nil {
-		return overlay.Center(listView, m.confirmModel.View(), m.screenW, m.screenH)
+		return overlay.Center(faintify(listView), resetEachLine(m.confirmModel.View()), m.screenW, m.screenH)
 	}
 
 	return listView
@@ -1020,8 +1036,6 @@ func (m bookmarkListModel) executeAction() (tea.Model, tea.Cmd) {
 		if err := m.manager.Delete(m.pendingItem.Bookmark.Alias); err != nil {
 			m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
 		} else {
-			m.message = fmt.Sprintf("✓ Deleted: %s", m.pendingItem.Bookmark.Alias)
-
 			// Remove from list
 			items := m.list.Items()
 			filtered := make([]list.Item, 0, len(items))
