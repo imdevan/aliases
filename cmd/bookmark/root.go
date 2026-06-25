@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	overlay "github.com/floatpane/bubble-overlay"
 	"github.com/spf13/cobra"
 
 	"bookmark/internal/adapters/editor"
@@ -963,26 +962,6 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// faintify re-injects the faint escape after every reset embedded in s, since a single
-// wrapping Faint style is cancelled by any reset sequence the content already contains.
-func faintify(s string) string {
-	const faintSeq = "\x1b[2m"
-	const resetSeq = "\x1b[0m"
-	return faintSeq + strings.ReplaceAll(s, resetSeq, resetSeq+faintSeq) + resetSeq
-}
-
-// resetEachLine forces a clean SGR reset at the start of every line, since
-// overlay.Center's Line() resets SGR after pasting the popup but not before it,
-// letting the faded background's trailing escape state bleed into the popup itself.
-func resetEachLine(s string) string {
-	const resetSeq = "\x1b[0m"
-	lines := strings.Split(s, "\n")
-	for i, line := range lines {
-		lines[i] = resetSeq + line
-	}
-	return strings.Join(lines, "\n")
-}
-
 func (m bookmarkListModel) View() string {
 	listView := m.responsive.FullWidthFrameStyle(m.theme).Render(m.list.View())
 
@@ -991,15 +970,15 @@ func (m bookmarkListModel) View() string {
 	}
 
 	if m.addMode && m.addModel != nil {
-		return overlay.Center(faintify(listView), resetEachLine(m.addModel.View()), m.screenW, m.screenH)
+		return ui.Center(listView, m.addModel.View(), m.screenW, m.screenH)
 	}
 
 	if m.editMode && m.editModel != nil {
-		return overlay.Center(faintify(listView), resetEachLine(m.editModel.View()), m.screenW, m.screenH)
+		return ui.Center(listView, m.editModel.View(), m.screenW, m.screenH)
 	}
 
 	if m.confirmMode && m.confirmModel != nil {
-		return overlay.Center(faintify(listView), resetEachLine(m.confirmModel.View()), m.screenW, m.screenH)
+		return ui.Center(listView, m.confirmModel.View(), m.screenW, m.screenH)
 	}
 
 	return listView
