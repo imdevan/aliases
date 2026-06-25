@@ -21,10 +21,10 @@
 
 ## Feature 2: fixes
 - [x] 2.1 bookmark add should use the same form as interactive add bookmark (and bookmark edit)
-- [ ] 2.3 add error color to config use error color for form validation errors 
+- [x] 2.3 add error color to config use error color for form validation errors 
   - e.g. * input cannot be empty on add / edit
 
-## Feature 3: improve bookmark add created 
+## Feature 3: improve bookmark confirmation messages
 - [ ] 3.1 border
 - [ ] 3.2 some color
 
