@@ -54,7 +54,7 @@ var reservedKeywords = map[string]bool{
 	"const":    true,
 }
 
-func isReservedKeyword(alias string) bool {
+func IsReservedKeyword(alias string) bool {
 	return reservedKeywords[strings.ToLower(alias)]
 }
 
@@ -331,10 +331,10 @@ func (m *Manager) BuildNavigationCommand(bm domain.Bookmark) string {
 
 // Add creates or updates a bookmark.
 func (m *Manager) Add(bookmark domain.Bookmark) error {
-	if !isValidAlias(bookmark.Alias) {
+	if !IsValidAlias(bookmark.Alias) {
 		return ErrInvalidAlias
 	}
-	if isReservedKeyword(bookmark.Alias) {
+	if IsReservedKeyword(bookmark.Alias) {
 		return ErrReservedAlias
 	}
 
@@ -463,7 +463,7 @@ func GenerateAlias(path string, separator string, lowercase bool, partLength int
 	return alias.String()
 }
 
-func isValidAlias(alias string) bool {
+func IsValidAlias(alias string) bool {
 	if alias == "" {
 		return false
 	}

@@ -262,9 +262,9 @@ func TestIsValidAlias(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.alias, func(t *testing.T) {
-			got := isValidAlias(tt.alias)
+			got := IsValidAlias(tt.alias)
 			if got != tt.valid {
-				t.Errorf("isValidAlias(%q) = %v, want %v", tt.alias, got, tt.valid)
+				t.Errorf("IsValidAlias(%q) = %v, want %v", tt.alias, got, tt.valid)
 			}
 		})
 	}
