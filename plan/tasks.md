@@ -23,10 +23,20 @@
 - [x] 2.1 bookmark add should use the same form as interactive add bookmark (and bookmark edit)
 - [x] 2.3 add error color to config use error color for form validation errors 
   - e.g. * input cannot be empty on add / edit
+- [x] 2.4 validate form fields on blur
 
 ## Feature 3: improve bookmark confirmation messages
-- [ ] 3.1 border
-- [ ] 3.2 some color
+- [ ] 3.1 add config  plain_text = "false" | "true"
+- when true: output confirmation messages, errors, 
+- when false (default) show pretty outputs keep as is
+- all of the following changes apply when plain_text is false:
+- [ ] 3.2 border (config border color) + padding(1,1)
+- [ ] 3.3 use home_icon in place of listing full directory
+- [ ] 3.4 add success color to config
+- [ ] 3.5 use success color for successful confirmation messages. title "Bookmark deleted:" is green the bookmark value is default text color
+- bookmark added, edited, deleted
+- [ ] 3.6 add and edit header get their own line. Break after title. 
+- [ ] 3.7 remove "'" around bookmark value on add and edit
 
 ## Feature 4: improve bookmark edit confirmation
 - [ ] 4.1 should use same confirmation wrapper as bookmark created (share border and color styles)
@@ -40,13 +50,13 @@
 - [ ] 5.2 config init should check that bookmarks_location is imported in the users shell
   - if no: prompt user if they would like to add it
 
-## Feature 6: nu, fish, bash, aliases functions
+## feature 6: nu, fish, bash, aliases functions
 - [x] 6.1 add alias functions like those in the zsh implementation. 
   - the bellow should work the the nu and fish implementations (but account for those shell syntax differences)
 ~/.bookmarks/bookmarks.sh:4
 ```bash
-# Function wrapper to auto-source bookmarks after running bookmark commands
-# This ensures new/updated bookmarks are immediately available in your shell
+# function wrapper to auto-source bookmarks after running bookmark commands
+# this ensures new/updated bookmarks are immediately available in your shell
 bookmark() {
 	command bookmark "$@" && source /home/devy/.bookmarks/bookmarks.sh
 }
