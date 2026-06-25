@@ -45,7 +45,15 @@ type BookmarkFormModel struct {
 	responsive *ResponsiveManager
 	completed  bool
 	cancelled  bool
+	title      string
 }
+
+// WithTitle sets a custom title for the form model.
+func (m BookmarkFormModel) WithTitle(title string) BookmarkFormModel {
+	m.title = title
+	return m
+}
+
 
 // NewBookmarkFormModel creates a new bookmark form with optional default values.
 func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) BookmarkFormModel {
@@ -81,6 +89,7 @@ func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) Bookmar
 		focused:    0,
 		theme:      theme,
 		responsive: NewResponsiveManager(80),
+		title:      "Add Bookmark",
 	}
 }
 
@@ -124,6 +133,7 @@ func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel
 		focused:    0,
 		theme:      theme,
 		responsive: NewResponsiveManager(80),
+		title:      "Edit Bookmark",
 	}
 }
 
@@ -196,10 +206,14 @@ func (m BookmarkFormModel) View() string {
 		return ""
 	}
 
+	titleText := m.title
+	if titleText == "" {
+		titleText = "Create New Bookmark"
+	}
 	title := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(m.theme.Headings).
-		Render("Create New Bookmark")
+		Render(titleText)
 
 	help := lipgloss.NewStyle().
 		Foreground(m.theme.Muted).

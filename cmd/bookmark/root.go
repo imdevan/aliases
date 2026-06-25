@@ -298,6 +298,9 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 
 	theme := ui.ThemeFromConfig(cfg)
 	m := ui.NewBookmarkFormModelEdit(theme, bm)
+	if !exists {
+		m = m.WithTitle(fmt.Sprintf("'%s' Not Found, Add Bookmark", alias))
+	}
 
 	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
 	p := tea.NewProgram(m, progOpts...)
