@@ -10,10 +10,10 @@
     - only when the modal is open
 - [x] 1.2 move overlay to internal/ui module 
   - >or possibly extend the functionality of list view so that less ui logic lives in root.go 
-- [ ] 1.3 Update edit / add modal title
-  - [ ] 1.3.1 edit: Edit bookmark
-  - [ ] 1.3.2 edit, but no bookmark found: '' Not Found, Add Bookmark
-  - [ ] 1.3.3 add: Add bookmark
+- [x] 1.3 Update edit / add modal title
+  - [x] 1.3.1 edit: Edit bookmark
+  - [x] 1.3.2 edit, but no bookmark found: '' Not Found, Add Bookmark
+  - [x] 1.3.3 add: Add bookmark
 - [ ] 1.4 remove the confirmation messages for add, edit, and delete in interactive mode. 
 - when listview is open
 - when called on their own ineractively is okay
