@@ -29,6 +29,7 @@ func TestDefaultConfig(t *testing.T) {
 			"Muted":                cfg.Muted,
 			"Accent":               cfg.Accent,
 			"Border":               cfg.Border,
+			"Error":                cfg.Error,
 		}
 
 		for name, value := range colorFields {
@@ -71,6 +72,9 @@ func TestDefaultConfig(t *testing.T) {
 		}
 		if cfg.Border != "08" {
 			t.Errorf("DefaultConfig().Border = %q, want %q", cfg.Border, "08")
+		}
+		if cfg.Error != "01" {
+			t.Errorf("DefaultConfig().Error = %q, want %q", cfg.Error, "01")
 		}
 	})
 

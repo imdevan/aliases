@@ -20,6 +20,7 @@ type Theme struct {
 	Flags                lipgloss.Color
 	Muted                lipgloss.Color
 	Border               lipgloss.Color
+	Error                lipgloss.Color
 }
 
 // ThemeFromConfig builds a theme with safe fallbacks.
@@ -35,6 +36,7 @@ func ThemeFromConfig(cfg domain.Config) Theme {
 		Flags:                resolveColor(cfg.Flags, "12"),
 		Muted:                resolveColor(cfg.Muted, "08"),
 		Border:               resolveColor(cfg.Border, "08"),
+		Error:                resolveColor(cfg.Error, "01"),
 	}
 }
 
