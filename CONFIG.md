@@ -62,6 +62,7 @@ Colors support named, numeric, or hex values (e.g., `7`, `13`, `"#ff8800"`).
 | `muted` | string | `08` | Muted text color |
 | `accent` | string | `13` | Accent color |
 | `border` | string | `08` | Border color |
+| `error` | string | `01` | Error and validation color |
 
 ## Example Configuration
 
@@ -101,6 +102,7 @@ tags = "13"
 flags = "12"
 muted = "08"
 border = "08"
+error = "01"
 ```
 
 ## Initializing Configuration
