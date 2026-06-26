@@ -42,8 +42,12 @@
 - [x] 3.6 add and edit header get their own line. Break after title. 
 - [x] 3.7 remove "'" around bookmark value on add and edit
 - [x] 3.8 use nerd font icon in header  for success messages
-- [ ] 3.9 use nerd font icon in header   for failure messages
-
+- [x] 3.9 improve Cancel exit_message
+  - [x] 3.9.1 should have error color
+  - [x] 3.9.2 should have border when not "plain_text"
+  - [x] 3.9.3 should have  icon when not "plain_text"
+- [x] 3.10 improve delete bookmark confirmation message title should use error color
+ 
 ## feature 4: nu, fish, bash, aliases functions
 - [x] 4.1 add alias functions like those in the zsh implementation. 
   - the bellow should work the the nu and fish implementations (but account for those shell syntax differences)
@@ -66,10 +70,3 @@ bm() {
 }
 
 ```
-## Feature 5: bookmark sync
-- [ ] 5.1 sync to _
-  - [ ] 5.1.0 sync from the current config to shell 
-  - [ ] 5.1.1 sync strategies
-  - [ ] 5.1.2 add sync_strategy = "add and skip" | "add and replace" | "overwrite" to config
-- [ ] 5.2 sync from _
-
