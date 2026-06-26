@@ -72,7 +72,7 @@ func newDeleteCmd() *cobra.Command {
 					"Delete Bookmark",
 					fmt.Sprintf("Delete bookmark '%s → %s'?", bm.Alias, bm.Path),
 					theme,
-				)
+				).WithTitleColor(theme.Error)
 
 				p := tea.NewProgram(confirmModel, tea.WithoutSignalHandler())
 				result, err := p.Run()
@@ -82,7 +82,7 @@ func newDeleteCmd() *cobra.Command {
 
 				if confirmResult, ok := result.(ui.ConfirmationModel); ok {
 					if !confirmResult.ChoiceValue() {
-						cmd.Println("Cancelled")
+						cmd.Println(ui.ExitMessage(theme, "Cancelled"))
 						return nil
 					}
 				}
@@ -92,7 +92,7 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			cmd.Printf("✓ Bookmark deleted: %s\n", alias)
+			printSuccess(cfg, "deleted", alias, "")
 			return nil
 		},
 	}
