@@ -4,6 +4,10 @@ package icon
 type Icon string
 
 const (
+	// Status icons
+	Success Icon = "\uf00c"
+	Failure Icon = "\uf00d"
+
 	// Bookmarks icon
 	Bookmarks Icon = "\uf097"
 
