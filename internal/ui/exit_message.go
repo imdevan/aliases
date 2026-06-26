@@ -8,22 +8,21 @@ import (
 	"bookmark/internal/adapters/icon"
 )
 
-// ExitMessage renders a standard framed exit message.
-func ExitMessage(theme Theme, message string, mutedText bool) string {
-	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Text)).
-		Margin(0, 2, 0, 2)
-
-	if mutedText {
-		return style.Render(message)
+// ExitMessage renders a cancel/exit message with error styling when not plain text.
+func ExitMessage(theme Theme, message string) string {
+	if theme.PlainText {
+		return message
 	}
 
-	return style.Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Muted)).
-		Foreground(lipgloss.Color(theme.Secondary)).
-		Bold(true).
+	title := fmt.Sprintf("%s %s", icon.Failure, message)
+	titleStyled := lipgloss.NewStyle().Foreground(theme.Error).Bold(true).Render(title)
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Error).
+		Padding(1, 1).
 		Margin(1, 1).
-		Padding(1, 2).Render(message)
+		Render(titleStyled)
 }
 
 // SuccessMessage renders a confirmation message for bookmark add/edit/delete.
