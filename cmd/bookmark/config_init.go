@@ -96,6 +96,7 @@ func renderConfigTemplate(cfg domain.Config) string {
 	builder.WriteString("\n# CLI behavior\n")
 	builder.WriteString(fmt.Sprintf("# interactive_default = %t\n", cfg.InteractiveDefault))
 	builder.WriteString("# plain_text = false  # When true: output plain text confirmation messages and errors instead of styled output\n")
+	builder.WriteString(fmt.Sprintf("# confirm_delete = %t  # When false: delete bookmarks without confirmation prompt\n", cfg.ConfirmDelete))
 	
 	builder.WriteString("\n# Bookmark settings\n")
 	builder.WriteString(fmt.Sprintf("# bookmark_location = %q  # Directory for bookmark files\n", cfg.BookmarkLocation))

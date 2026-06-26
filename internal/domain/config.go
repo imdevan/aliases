@@ -25,6 +25,7 @@ type Config struct {
 	Success              string `toml:"success"`
 	InteractiveDefault   bool   `toml:"interactive_default"`
 	PlainText            bool   `toml:"plain_text"`
+	ConfirmDelete        bool   `toml:"confirm_delete"`
 	ListSpacing          string `toml:"list_spacing"`
 	
 	// Bookmark settings
@@ -63,6 +64,7 @@ func DefaultConfig() Config {
 		Success:              "02",
 		InteractiveDefault:   false,
 		PlainText:            false,
+		ConfirmDelete:        true,
 		ListSpacing:          "space",
 		BookmarkLocation:     bookmarkLocation,
 		NavigationTool:       "cd",

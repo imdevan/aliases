@@ -101,6 +101,7 @@ type partialConfig struct {
 	Success              *string `toml:"success"`
 	InteractiveDefault   *bool   `toml:"interactive_default"`
 	PlainText            *bool   `toml:"plain_text"`
+	ConfirmDelete        *bool   `toml:"confirm_delete"`
 	ListSpacing          *string `toml:"list_spacing"`
 	BookmarkLocation     *string `toml:"bookmark_location"`
 	NavigationTool       *string `toml:"navigation_tool"`
@@ -174,6 +175,9 @@ func applyPartial(config *domain.Config, partial *partialConfig) {
 	}
 	if partial.PlainText != nil {
 		config.PlainText = *partial.PlainText
+	}
+	if partial.ConfirmDelete != nil {
+		config.ConfirmDelete = *partial.ConfirmDelete
 	}
 	if partial.ListSpacing != nil {
 		config.ListSpacing = *partial.ListSpacing
