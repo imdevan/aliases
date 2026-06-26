@@ -947,6 +947,14 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "d":
 			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
+				if !m.config.ConfirmDelete {
+					if err := m.manager.Delete(item.Bookmark.Alias); err != nil {
+						m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
+					} else {
+						m.reloadList()
+					}
+					return m, nil
+				}
 				m.pendingAction = "Delete"
 				m.pendingItem = item
 				confirmModel := ui.NewConfirmationModel(

@@ -65,8 +65,8 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			// Confirm deletion unless --force
-			if !force {
+			// Confirm deletion unless --force or confirm_delete is false
+			if !force && cfg.ConfirmDelete {
 				theme := ui.ThemeFromConfig(cfg)
 				confirmModel := ui.NewConfirmationModel(
 					"Delete Bookmark",
