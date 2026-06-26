@@ -34,28 +34,18 @@
 - when true: output confirmation messages, errors, 
 - when false (default) show pretty outputs keep as is
 - all of the following changes apply when plain_text is false:
-- [ ] 3.2 border (config border color) + padding(1,1)
-- [ ] 3.3 use home_icon in place of listing full directory
-- [ ] 3.4 add success color to config
-- [ ] 3.5 use success color for successful confirmation messages. title "Bookmark deleted:" is green the bookmark value is default text color
+- [x] 3.2 border (config border color) + padding(1,1)
+- [x] 3.3 use home_icon in place of listing full directory
+- [x] 3.4 add success color to config
+- [x] 3.5 use success color for successful confirmation messages. title "Bookmark deleted:" is green the bookmark value is default text color
 - bookmark added, edited, deleted
-- [ ] 3.6 add and edit header get their own line. Break after title. 
-- [ ] 3.7 remove "'" around bookmark value on add and edit
+- [x] 3.6 add and edit header get their own line. Break after title. 
+- [x] 3.7 remove "'" around bookmark value on add and edit
+- [x] 3.8 use nerd font icon in header  for success messages
+- [ ] 3.9 use nerd font icon in header   for failure messages
 
-## Feature 4: improve bookmark edit confirmation
-- [ ] 4.1 should use same confirmation wrapper as bookmark created (share border and color styles)
-- [ ] 4.2 if name changed show from -> to
-
-## Feature 5: config
-- [ ] 5.1 bookmark config; first call behavior
-- check if initiated
-  - if no: prompt user if they would like to init
-  - if yes: continue to open config
-- [ ] 5.2 config init should check that bookmarks_location is imported in the users shell
-  - if no: prompt user if they would like to add it
-
-## feature 6: nu, fish, bash, aliases functions
-- [x] 6.1 add alias functions like those in the zsh implementation. 
+## feature 4: nu, fish, bash, aliases functions
+- [x] 4.1 add alias functions like those in the zsh implementation. 
   - the bellow should work the the nu and fish implementations (but account for those shell syntax differences)
 ~/.bookmarks/bookmarks.sh:4
 ```bash
@@ -76,9 +66,10 @@ bm() {
 }
 
 ```
-## Feature 7: bookmark sync
-- [ ] 7.1 sync to _
-  - [ ] 7.1.1 sync from the current config to shell 
-  - [ ] 7.1.2 
-- [ ] 7.2 sync from _
+## Feature 5: bookmark sync
+- [ ] 5.1 sync to _
+  - [ ] 5.1.0 sync from the current config to shell 
+  - [ ] 5.1.1 sync strategies
+  - [ ] 5.1.2 add sync_strategy = "add and skip" | "add and replace" | "overwrite" to config
+- [ ] 5.2 sync from _
 
