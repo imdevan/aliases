@@ -14,6 +14,8 @@ The following options can be set in your configuration file:
 |--------|------|---------|-------------|
 | `editor` | string | `nvim` | Editor to use for editing bookmarks and config files |
 | `interactive_default` | bool | `false` | Start in interactive mode by default when no arguments are provided |
+| `confirm_delete` | bool | `true` | Prompt for confirmation before deleting a bookmark. When `false`, delete immediately |
+| `plain_text` | bool | `false` | Output plain text confirmation messages and errors instead of styled output |
 
 ### Bookmark Settings
 
@@ -70,6 +72,8 @@ Colors support named, numeric, or hex values (e.g., `7`, `13`, `"#ff8800"`).
 # General
 editor = "nvim"
 interactive_default = false
+confirm_delete = true
+plain_text = false
 
 # Bookmark settings
 bookmark_location = "~/.bookmarks"
