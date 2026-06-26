@@ -88,7 +88,7 @@ func runAddInteractive(cmd *cobra.Command, opts *addOptions) error {
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		cmd.Println(ui.ExitMessage(theme, "Cancelled", true))
+		cmd.Println(ui.ExitMessage(theme, "Cancelled"))
 		return nil
 	}
 
@@ -108,20 +108,15 @@ func runAddInteractive(cmd *cobra.Command, opts *addOptions) error {
 		return err
 	}
 
-	if exists {
-		cmd.Printf("⚠️  Bookmark '%s' already exists and will be updated\n", bm.Alias)
-	}
-
 	// Save bookmark
 	if err := bmManager.Add(bm); err != nil {
 		return err
 	}
 
+	action := "created"
 	if exists {
-		cmd.Printf("✓ Updated bookmark '%s' → %s\n", bm.Alias, bm.Path)
-	} else {
-		cmd.Printf("✓ Created bookmark '%s' → %s\n", bm.Alias, bm.Path)
+		action = "updated"
 	}
-
+	printSuccess(cfg, action, bm.Alias, bm.Path)
 	return nil
 }
