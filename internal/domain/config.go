@@ -22,6 +22,7 @@ type Config struct {
 	Accent               string `toml:"accent"`
 	Border               string `toml:"border"`
 	Error                string `toml:"error"`
+	Success              string `toml:"success"`
 	InteractiveDefault   bool   `toml:"interactive_default"`
 	PlainText            bool   `toml:"plain_text"`
 	ListSpacing          string `toml:"list_spacing"`
@@ -59,6 +60,7 @@ func DefaultConfig() Config {
 		Accent:               "13",
 		Border:               "08",
 		Error:                "01",
+		Success:              "02",
 		InteractiveDefault:   false,
 		PlainText:            false,
 		ListSpacing:          "space",

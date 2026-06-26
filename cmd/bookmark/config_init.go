@@ -138,5 +138,6 @@ func renderConfigTemplate(cfg domain.Config) string {
 	builder.WriteString(fmt.Sprintf("# muted = %q\n", cfg.Muted))
 	builder.WriteString(fmt.Sprintf("# border = %q\n", cfg.Border))
 	builder.WriteString(fmt.Sprintf("# error = %q\n", cfg.Error))
+	builder.WriteString(fmt.Sprintf("# success = %q\n", cfg.Success))
 	return builder.String()
 }
