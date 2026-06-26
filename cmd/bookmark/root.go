@@ -193,7 +193,8 @@ func runAddBookmark(cmd *cobra.Command, args []string, opts *rootOptions, cfg do
 	}
 
 	if exists && !opts.yes && !confirmOverwrite(cmd, bmManager, alias, cfg) {
-		cmd.Println("Cancelled")
+		theme := ui.ThemeFromConfig(cfg)
+		cmd.Println(ui.ExitMessage(theme, "Cancelled"))
 		return nil
 	}
 
@@ -203,7 +204,11 @@ func runAddBookmark(cmd *cobra.Command, args []string, opts *rootOptions, cfg do
 		return err
 	}
 
-	printSuccess(cmd, alias, targetPath, exists)
+	action := "created"
+	if exists {
+		action = "updated"
+	}
+	printSuccess(cfg, action, alias, targetPath)
 	return nil
 }
 
@@ -255,12 +260,25 @@ func buildBookmark(alias, cwd string, opts *rootOptions) domain.Bookmark {
 	return bm
 }
 
-func printSuccess(cmd *cobra.Command, alias, cwd string, isUpdate bool) {
-	action := "created"
-	if isUpdate {
-		action = "updated"
+func printSuccess(cfg domain.Config, action, alias, path string) {
+	theme := ui.ThemeFromConfig(cfg)
+	inline := action == "deleted"
+	var body string
+	if path != "" {
+		home, _ := os.UserHomeDir()
+		displayPath := path
+		switch {
+		case cfg.HomeIcon == "" || home == "":
+		case path == home:
+			displayPath = cfg.HomeIcon
+		case strings.HasPrefix(path, home+"/"):
+			displayPath = cfg.HomeIcon + strings.TrimPrefix(path, home)
+		}
+		body = fmt.Sprintf("%s → %s", alias, displayPath)
+	} else {
+		body = alias
 	}
-	cmd.Printf("✓ Bookmark %s: %s → %s\n", action, alias, cwd)
+	fmt.Println(ui.SuccessMessage(theme, action, body, inline))
 }
 
 func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Config) error {
@@ -311,7 +329,7 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.ExitMessage(theme, "Cancelled", true))
+		fmt.Println(ui.ExitMessage(theme, "Cancelled"))
 		return nil
 	}
 
@@ -340,11 +358,11 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 		return err
 	}
 
+	action := "created"
 	if exists {
-		cmd.Printf("✓ Updated bookmark '%s' → %s\n", newAlias, newPath)
-	} else {
-		cmd.Printf("✓ Created bookmark '%s' → %s\n", newAlias, newPath)
+		action = "updated"
 	}
+	printSuccess(cfg, action, newAlias, newPath)
 	return nil
 }
 
@@ -377,7 +395,7 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.ExitMessage(theme, "Cancelled", true))
+		fmt.Println(ui.ExitMessage(theme, "Cancelled"))
 		return nil
 	}
 
@@ -398,7 +416,11 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 	if err := bmManager.Add(bm); err != nil {
 		return err
 	}
-	printSuccess(cmd, alias, path, exists)
+	action := "created"
+	if exists {
+		action = "updated"
+	}
+	printSuccess(cfg, action, alias, path)
 	return nil
 }
 
@@ -931,7 +953,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					"Delete Bookmark",
 					fmt.Sprintf("Delete bookmark '%s'?", item.Bookmark.Alias),
 					m.theme,
-				)
+				).WithTitleColor(m.theme.Error)
 				m.confirmModel = &confirmModel
 				m.confirmMode = true
 				return m, confirmModel.Init()
