@@ -57,11 +57,12 @@ import (
 //	    return m.confirm.View()
 //	}
 type ConfirmationModel struct {
-	title   string
-	prompt  string
-	choice  *bool
-	confirm *huh.Confirm
-	theme   Theme
+	title      string
+	prompt     string
+	choice     *bool
+	confirm    *huh.Confirm
+	theme      Theme
+	titleColor lipgloss.Color
 }
 
 // NewConfirmationModel creates a new confirmation dialog
@@ -81,12 +82,19 @@ func NewConfirmationModel(title, prompt string, theme Theme) ConfirmationModel {
 	confirm.Focus()
 
 	return ConfirmationModel{
-		title:   title,
-		prompt:  prompt,
-		choice:  &choice,
-		confirm: confirm,
-		theme:   theme,
+		title:      title,
+		prompt:     prompt,
+		choice:     &choice,
+		confirm:    confirm,
+		theme:      theme,
+		titleColor: theme.Headings,
 	}
+}
+
+// WithTitleColor sets the title color for the confirmation dialog.
+func (m ConfirmationModel) WithTitleColor(color lipgloss.Color) ConfirmationModel {
+	m.titleColor = color
+	return m
 }
 
 // Init initializes the confirmation dialog
@@ -135,7 +143,7 @@ func (m ConfirmationModel) View() string {
 	}
 	helpText := "Press y or n."
 
-	title := lipgloss.NewStyle().Bold(true).Foreground(m.theme.Headings).Render(titleText)
+	title := lipgloss.NewStyle().Bold(true).Foreground(m.titleColor).Render(titleText)
 	prompt := lipgloss.NewStyle().Foreground(m.theme.Text).Render(m.prompt)
 	help := lipgloss.NewStyle().Foreground(m.theme.Muted).Render(helpText)
 
