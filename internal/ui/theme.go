@@ -21,6 +21,7 @@ type Theme struct {
 	Muted                lipgloss.Color
 	Border               lipgloss.Color
 	Error                lipgloss.Color
+	Success              lipgloss.Color
 	PlainText            bool
 }
 
@@ -38,6 +39,7 @@ func ThemeFromConfig(cfg domain.Config) Theme {
 		Muted:                resolveColor(cfg.Muted, "08"),
 		Border:               resolveColor(cfg.Border, "08"),
 		Error:                resolveColor(cfg.Error, "01"),
+		Success:              resolveColor(resolveFallback(cfg.Success, cfg.Primary), "02"),
 		PlainText:            cfg.PlainText,
 	}
 }
