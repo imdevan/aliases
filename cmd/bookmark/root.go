@@ -194,7 +194,7 @@ func runAddBookmark(cmd *cobra.Command, args []string, opts *rootOptions, cfg do
 
 	if exists && !opts.yes && !confirmOverwrite(cmd, bmManager, alias, cfg) {
 		theme := ui.ThemeFromConfig(cfg)
-		cmd.Println(ui.ExitMessage(theme, "Cancelled"))
+		cmd.Println(ui.CanceledMessage(theme, "Overwrite"))
 		return nil
 	}
 
@@ -329,7 +329,7 @@ func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Co
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.ExitMessage(theme, "Cancelled"))
+		fmt.Println(ui.CanceledMessage(theme, "Edit"))
 		return nil
 	}
 
@@ -395,7 +395,7 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.ExitMessage(theme, "Cancelled"))
+		fmt.Println(ui.CanceledMessage(theme, "Add"))
 		return nil
 	}
 

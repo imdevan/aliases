@@ -8,20 +8,27 @@ import (
 	"bookmark/internal/adapters/icon"
 )
 
-// ExitMessage renders a cancel/exit message with error styling when not plain text.
-func ExitMessage(theme Theme, message string) string {
-	if theme.PlainText {
-		return message
+// CanceledMessage renders a cancel message with error styling when not plain text.
+// Optionally accepts an action name; if provided, title is "<Action> canceled", otherwise "Canceled".
+func CanceledMessage(theme Theme, action ...string) string {
+	title := "Canceled"
+	if len(action) > 0 && action[0] != "" {
+		title = action[0] + " canceled"
 	}
 
-	title := fmt.Sprintf("%s %s", icon.Failure, message)
-	titleStyled := lipgloss.NewStyle().Foreground(theme.Error).Bold(true).Render(title)
+	if theme.PlainText {
+		return title
+	}
+
+	titleStyled := lipgloss.NewStyle().
+		// Render(fmt.Sprintf("%s %s", icon.Failure, title))
+		Render(fmt.Sprintf("%s", title))
 
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(theme.Error).
-		Padding(1, 1).
-		Margin(1, 1).
+		BorderForeground(theme.Border).
+		// BorderForeground(theme.Error).
+		Padding(0, 2).
 		Render(titleStyled)
 }
 

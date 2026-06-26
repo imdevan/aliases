@@ -88,7 +88,7 @@ func runAddInteractive(cmd *cobra.Command, opts *addOptions) error {
 
 	fm, ok := result.(ui.BookmarkFormModel)
 	if !ok || !fm.IsCompleted() {
-		cmd.Println(ui.ExitMessage(theme, "Cancelled"))
+		cmd.Println(ui.CanceledMessage(theme, "Add"))
 		return nil
 	}
 

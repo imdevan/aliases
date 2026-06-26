@@ -82,7 +82,7 @@ func newDeleteCmd() *cobra.Command {
 
 				if confirmResult, ok := result.(ui.ConfirmationModel); ok {
 					if !confirmResult.ChoiceValue() {
-						cmd.Println(ui.ExitMessage(theme, "Cancelled"))
+						cmd.Println(ui.CanceledMessage(theme, "Delete"))
 						return nil
 					}
 				}
