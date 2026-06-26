@@ -24,7 +24,7 @@
 - [x] 2.3 add error color to config use error color for form validation errors 
   - e.g. * input cannot be empty on add / edit
 - [x] 2.4 validate form fields on blur
-- [ ] 2.5 bookmark add should accept arguments and flags, same as root command
+- [x] 2.5 bookmark add should accept arguments and flags, same as root command
   - -xfistTy, functionally same as calling bookmark [alias] [flags]
   - open interactively prefilled unless -y passed or 
 
@@ -75,7 +75,7 @@ bm() {
 ```
 
 ## Feature 4: additional config
-- [ ] 4.2 confirm_delete = true | false; when false do not ask before deleting a bookmark
-  - [ ] 4.2.1 add config 
-  - [ ] 4.2.2 add to config init
-  - [ ] 4.2.3 add to config docs
+- [x] 4.2 confirm_delete = true | false; when false do not ask before deleting a bookmark
+  - [x] 4.2.1 add config 
+  - [x] 4.2.2 add to config init
+  - [x] 4.2.3 add to config docs
