@@ -10,13 +10,71 @@ PACKAGE_FILE="${ROOT_DIR}/internal/package/package.toml"
 DOCS_API_DIR="${ROOT_DIR}/docs/src/content/docs/api"
 DOCS_CONFIG="${ROOT_DIR}/docs/config.mjs"
 DOCS_SIDEBAR="${ROOT_DIR}/docs/sidebar.mjs"
-CMD_DIR="${ROOT_DIR}/cmd/bookmark"
 
 # Source shared utilities
 . "${ROOT_DIR}/scripts/lib.sh"
 
+render_flag_groups() {
+  local cmd_info="$1"
+  local output_file="$2"
+
+  local num_groups=$(echo "$cmd_info" | jq '.flag_groups | length' 2>/dev/null || echo 0)
+  if [ "$num_groups" -eq 0 ]; then
+    return
+  fi
+
+  echo "" >>"$output_file"
+  echo "## Flags" >>"$output_file"
+  echo "" >>"$output_file"
+
+  for ((g=0; g<num_groups; g++)); do
+    local group_info=$(echo "$cmd_info" | jq -c ".flag_groups[$g]")
+    local group_name=$(echo "$group_info" | jq -r '.name')
+    local group_desc=$(echo "$group_info" | jq -r '.description')
+    local group_example=$(echo "$group_info" | jq -r '.example')
+
+    echo "### ${group_name}" >>"$output_file"
+    echo "" >>"$output_file"
+
+    if [ -n "$group_desc" ] && [ "$group_desc" != "null" ] && [ "$group_desc" != "" ]; then
+      echo "$group_desc" >>"$output_file"
+      echo "" >>"$output_file"
+    fi
+
+    if [ -n "$group_example" ] && [ "$group_example" != "null" ] && [ "$group_example" != "" ]; then
+      echo "#### Example" >>"$output_file"
+      echo "" >>"$output_file"
+      echo "$group_example" >>"$output_file"
+      echo "" >>"$output_file"
+    fi
+
+    local num_flags=$(echo "$group_info" | jq '.flags | length' 2>/dev/null || echo 0)
+    if [ "$num_flags" -gt 0 ]; then
+      echo "| Flag | Type | Description |" >>"$output_file"
+      echo "|------|------|-------------|" >>"$output_file"
+      for ((f=0; f<num_flags; f++)); do
+        local flag_info=$(echo "$group_info" | jq -c ".flags[$f]")
+        local flag_name=$(echo "$flag_info" | jq -r '.name')
+        local flag_short=$(echo "$flag_info" | jq -r '.short')
+        local flag_type=$(echo "$flag_info" | jq -r '.type | ascii_downcase')
+        local flag_desc=$(echo "$flag_info" | jq -r '.description')
+
+        if [ -n "$flag_short" ] && [ "$flag_short" != "null" ] && [ "$flag_short" != "" ]; then
+          flag_col="-${flag_short}, --${flag_name}"
+        else
+          flag_col="--${flag_name}"
+        fi
+
+        echo "| \`${flag_col}\` | ${flag_type} | ${flag_desc} |" >>"$output_file"
+      done
+      echo "" >>"$output_file"
+    fi
+  done
+}
+
 echo "📦 Reading package metadata..."
 PROJECT_NAME=$(parse_toml_key "$PACKAGE_FILE" "name")
+CMD_DIR="${ROOT_DIR}/cmd/${PROJECT_NAME}"
 DESCRIPTION=$(parse_toml_key "$PACKAGE_FILE" "description")
 DOCS_SITE=$(parse_toml_key "$PACKAGE_FILE" "docs_site")
 DOCS_BASE=$(parse_toml_key "$PACKAGE_FILE" "docs_base")
@@ -47,30 +105,23 @@ EOF
   echo "  ✓ Updated config.mjs with package metadata"
 fi
 
+echo "🔧 Detecting Cobra commands..."
+COMMANDS_JSON=$(go run "${ROOT_DIR}/scripts/parse_commands.go" "$CMD_DIR")
+num_cmds=$(echo "$COMMANDS_JSON" | jq '. | length')
+
 echo "🔧 Generating sidebar configuration..."
 
 # Detect commands from cmd directory
 COMMANDS=""
-if [ -d "$CMD_DIR" ]; then
-  for cmd_file in "$CMD_DIR"/*.go; do
-    # Skip test files, main.go, and root.go
-    if [[ "$cmd_file" == *"_test.go" ]] || [[ "$cmd_file" == *"/main.go" ]] || [[ "$cmd_file" == *"/root.go" ]]; then
-      continue
-    fi
-
-    # Extract command name from filename (e.g., config.go -> config, delete_cmd.go -> delete)
-    cmd_name=$(basename "$cmd_file" .go | sed 's/_cmd$//')
-
-    # Convert underscores to spaces for display (e.g., config_init -> config init)
-    cmd_display=$(echo "$cmd_name" | sed 's/_/ /g')
-
-    # Convert underscores to hyphens for URL (e.g., config_init -> config-init)
-    cmd_url=$(echo "$cmd_name" | sed 's/_/-/g')
-
-    COMMANDS="${COMMANDS}            { label: '${cmd_display}', link: '/commands/${cmd_url}' },
+for ((i=0; i<num_cmds; i++)); do
+  cmd_info=$(echo "$COMMANDS_JSON" | jq -c ".[$i]")
+  cmd_name=$(echo "$cmd_info" | jq -r '.cmd_name')
+  if [ "$cmd_name" = "$PROJECT_NAME" ]; then
+    continue
+  fi
+  COMMANDS="${COMMANDS}            { label: '${cmd_name}', link: '/commands/${cmd_name}' },
 "
-  done
-fi
+done
 
 # Detect API packages
 API_PACKAGES=""
@@ -121,6 +172,12 @@ ${API_ADAPTERS}        ],
   },"
 fi
 
+# Conditionally include Contributing in sidebar
+CONTRIBUTING_SIDEBAR=""
+if [ -f "${ROOT_DIR}/CONTRIBUTING.md" ]; then
+  CONTRIBUTING_SIDEBAR="sidebar.push({ label: 'Contributing', link: '/contributing' });"
+fi
+
 # Generate sidebar.mjs with dynamic environment check
 cat >"$DOCS_SIDEBAR" <<EOF
 import config from './config.mjs';
@@ -164,6 +221,7 @@ if (!isProduction || projectName === 'go-cli-template') {
   sidebar.push(apiReference);
 }
 
+${CONTRIBUTING_SIDEBAR}
 export default sidebar;
 EOF
 
@@ -194,34 +252,37 @@ if [ -f "CONFIG.md" ]; then
   echo "  ✓ Generated configuration.md from CONFIG.md"
 fi
 
+# Generate contributing page from CONTRIBUTING.md
+if [ -f "CONTRIBUTING.md" ]; then
+  convert_with_frontmatter "CONTRIBUTING.md" "${DOCS_CONTENT_DIR}/contributing.md" \
+    "Contributing" "Contributing to ${PROJECT_NAME}"
+  echo "  ✓ Generated contributing.md from CONTRIBUTING.md"
+fi
+
 # Create commands directory
 mkdir -p "${DOCS_CONTENT_DIR}/commands"
 
 # Generate root command page from root.go
-if [ -f "cmd/bookmark/root.go" ]; then
+if [ -f "${CMD_DIR}/root.go" ]; then
   # For root command, use the description from package.toml
   ROOT_SHORT="${DESCRIPTION}"
 
-  # Extract godoc comment for root command (supports both // and /* */ style)
-  ROOT_GODOC=$(awk '
-    /^\/\*$/ {
-      in_block = 1
-      comment = ""
-      next
-    }
-    in_block && /\*\// {
-      in_block = 0
-      print comment
-      exit
-    }
-    in_block {
-      if (comment == "") {
-        comment = $0
-      } else {
-        comment = comment "\n" $0
-      }
-    }
-  ' "cmd/bookmark/root.go")
+  # Extract root command details from parse_commands output
+  root_info=$(echo "$COMMANDS_JSON" | jq -c ".[] | select(.cmd_name == \"${PROJECT_NAME}\")" 2>/dev/null || true)
+  ROOT_GODOC=""
+  ROOT_USE=""
+  if [ -n "$root_info" ]; then
+    ROOT_GODOC=$(echo "$root_info" | jq -r '.doc')
+    ROOT_USE=$(echo "$root_info" | jq -r '.use')
+  fi
+
+  if [ -z "$ROOT_GODOC" ] || [ "$ROOT_GODOC" = "null" ]; then
+    ROOT_GODOC="${ROOT_SHORT}"
+  fi
+
+  if [ -z "$ROOT_USE" ] || [ "$ROOT_USE" = "null" ]; then
+    ROOT_USE="${PROJECT_NAME} [alias]\n${PROJECT_NAME} [command]"
+  fi
 
   cat >"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md" <<EOF
 ---
@@ -229,140 +290,80 @@ title: ${PROJECT_NAME}
 description: ${ROOT_SHORT}
 ---
 
-${ROOT_SHORT}
+${ROOT_GODOC}
 
 ## Usage
 
 \`\`\`bash
-${PROJECT_NAME} [alias]
-${PROJECT_NAME} [command]
+${ROOT_USE}
 \`\`\`
 EOF
 
-  # Add godoc description if available
-  if [ -n "$ROOT_GODOC" ]; then
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "## Description" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "$ROOT_GODOC" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-  fi
-
-  # Extract flags from root.go
-  root_flags=$(awk '
-    /Flags\(\)\..*VarP?\(/ {
-      line = $0
-      if (match(line, /Flags\(\)\.(Bool|String|Int)VarP?\([^,]+, *"([^"]+)", *"([^"]*)", *[^,]+, *"([^"]+)"\)/, arr)) {
-        flag_type = arr[1]
-        flag_long = arr[2]
-        flag_short = arr[3]
-        flag_desc = arr[4]
-        
-        if (flag_short != "") {
-          flag_col = "-" flag_short ", --" flag_long
-        } else {
-          flag_col = "--" flag_long
-        }
-        
-        type_col = tolower(flag_type)
-        
-        print "| `" flag_col "` | " type_col " | " flag_desc " |"
-      }
-    }
-  ' "cmd/bookmark/root.go")
-
-  # Add flags table if flags were found
-  if [ -n "$root_flags" ]; then
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "## Flags" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "| Flag | Type | Description |" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "|------|------|-------------|" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-    echo "$root_flags" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-  fi
-
-  echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-  echo "## Available Commands" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
-  echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+  # Render flag groups
+  render_flag_groups "$root_info" "${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
 
   # List all subcommands
-  for cmd_file in "$CMD_DIR"/*.go; do
-    if [[ "$cmd_file" == *"_test.go" ]] || [[ "$cmd_file" == *"/main.go" ]] || [[ "$cmd_file" == *"/root.go" ]]; then
+  sub_cmds=()
+  for ((i=0; i<num_cmds; i++)); do
+    cmd_info=$(echo "$COMMANDS_JSON" | jq -c ".[$i]")
+    cmd_name=$(echo "$cmd_info" | jq -r '.cmd_name')
+    if [ "$cmd_name" = "$PROJECT_NAME" ]; then
       continue
     fi
-
-    cmd_name=$(basename "$cmd_file" .go | sed 's/_cmd$//')
-    cmd_display=$(echo "$cmd_name" | sed 's/_/ /g')
-    cmd_url=$(echo "$cmd_name" | sed 's/_/-/g')
-
-    # Extract Short description - handle both quoted strings and variables
-    cmd_short=$(awk '/Short:/ {
-      if (match($0, /Short: *"([^"]*)"/, arr)) {
-        print arr[1]
-      }
-    }' "$cmd_file" | head -1)
-
-    echo "- [\`${cmd_display}\`](/commands/${cmd_url}) - ${cmd_short}" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+    cmd_short=$(echo "$cmd_info" | jq -r '.short')
+    if [ -z "$cmd_short" ] || [ "$cmd_short" = "null" ]; then
+      cmd_short="$cmd_name"
+    fi
+    sub_cmds+=("- [\`${cmd_name}\`](/commands/${cmd_name}) - ${cmd_short}")
   done
+
+  if [ "${#sub_cmds[@]}" -gt 0 ]; then
+    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+    echo "## Available Commands" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+    echo "" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+    for entry in "${sub_cmds[@]}"; do
+      echo "$entry" >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md"
+    done
+  fi
 
   cat >>"${DOCS_CONTENT_DIR}/commands/${PROJECT_NAME}.md" <<EOF
 
 ## Source
 
-See [root.go](${REPOSITORY}/blob/main/cmd/bookmark/root.go) for implementation details.
+See [root.go](${REPOSITORY}/blob/main/cmd/${PROJECT_NAME}/root.go) for implementation details.
 EOF
 
   echo "  ✓ Generated commands/${PROJECT_NAME}.md"
 fi
 
 # Generate documentation for each command
-for cmd_file in "$CMD_DIR"/*.go; do
-  # Skip test files, main.go, and root.go
-  if [[ "$cmd_file" == *"_test.go" ]] || [[ "$cmd_file" == *"/main.go" ]] || [[ "$cmd_file" == *"/root.go" ]]; then
+for ((i=0; i<num_cmds; i++)); do
+  cmd_info=$(echo "$COMMANDS_JSON" | jq -c ".[$i]")
+  cmd_file=$(echo "$cmd_info" | jq -r '.go_file')
+  cmd_name=$(echo "$cmd_info" | jq -r '.cmd_name')
+  if [ "$cmd_name" = "$PROJECT_NAME" ]; then
     continue
   fi
-
-  # Extract command name from filename
-  cmd_name=$(basename "$cmd_file" .go | sed 's/_cmd$//')
-  cmd_display=$(echo "$cmd_name" | sed 's/_/ /g')
-  cmd_url=$(echo "$cmd_name" | sed 's/_/-/g')
-
-  # Extract command information from the Go file using awk for better parsing
-  cmd_use=$(awk '/Use:/ {
-    if (match($0, /Use: *"([^"]*)"/, arr)) {
-      print arr[1]
-    }
-  }' "$cmd_file" | head -1)
-
-  cmd_short=$(awk '/Short:/ {
-    if (match($0, /Short: *"([^"]*)"/, arr)) {
-      print arr[1]
-    }
-  }' "$cmd_file" | head -1)
-
-  # Extract godoc comment (supports both // and /* */ style)
-  cmd_godoc=$(awk '
-    /^\/\*$/ {
-      in_block = 1
-      comment = ""
-      next
-    }
-    in_block && /\*\// {
-      in_block = 0
-      print comment
-      exit
-    }
-    in_block {
-      if (comment == "") {
-        comment = $0
-      } else {
-        comment = comment "\n" $0
-      }
-    }
-  ' "$cmd_file")
+  cmd_use=$(echo "$cmd_info" | jq -r '.use')
+  cmd_short=$(echo "$cmd_info" | jq -r '.short')
+  cmd_godoc=$(echo "$cmd_info" | jq -r '.doc')
+  
+  # Use cmd_name for filename and sidebar label
+  cmd_url="$cmd_name"
+  cmd_display="$cmd_name"
 
   # Use display name if Use is empty
-  if [ -z "$cmd_use" ]; then
+  if [ -z "$cmd_use" ] || [ "$cmd_use" = "null" ]; then
     cmd_use="$cmd_display"
+  fi
+
+  # Use display name if Short is empty
+  if [ -z "$cmd_short" ] || [ "$cmd_short" = "null" ]; then
+    cmd_short="$cmd_display"
+  fi
+
+  if [ -z "$cmd_godoc" ] || [ "$cmd_godoc" = "null" ]; then
+    cmd_godoc="${cmd_short}"
   fi
 
   # Generate command documentation
@@ -372,7 +373,7 @@ title: ${cmd_display}
 description: ${cmd_short}
 ---
 
-${cmd_short}
+${cmd_godoc}
 
 ## Usage
 
@@ -381,57 +382,15 @@ ${PROJECT_NAME} ${cmd_use}
 \`\`\`
 EOF
 
-  # Add godoc description if available
-  if [ -n "$cmd_godoc" ]; then
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "## Description" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "$cmd_godoc" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-  fi
-
-  # Extract flags from the command file
-  flags=$(awk '
-    /Flags\(\)\..*VarP?\(/ {
-      # Extract flag information
-      line = $0
-      # Try to match the pattern for flag definitions
-      if (match(line, /Flags\(\)\.(Bool|String|Int)VarP?\([^,]+, *"([^"]+)", *"([^"]*)", *[^,]+, *"([^"]+)"\)/, arr)) {
-        flag_type = arr[1]
-        flag_long = arr[2]
-        flag_short = arr[3]
-        flag_desc = arr[4]
-        
-        # Build flag column
-        if (flag_short != "") {
-          flag_col = "-" flag_short ", --" flag_long
-        } else {
-          flag_col = "--" flag_long
-        }
-        
-        # Determine type
-        type_col = tolower(flag_type)
-        
-        print "| `" flag_col "` | " type_col " | " flag_desc " |"
-      }
-    }
-  ' "$cmd_file")
-
-  # Add flags table if flags were found
-  if [ -n "$flags" ]; then
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "## Flags" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "| Flag | Type | Description |" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "|------|------|-------------|" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-    echo "$flags" >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
-  fi
+  # Render flag groups
+  render_flag_groups "$cmd_info" "${DOCS_CONTENT_DIR}/commands/${cmd_url}.md"
 
   # Add source link
   cat >>"${DOCS_CONTENT_DIR}/commands/${cmd_url}.md" <<EOF
 
 ## Source
 
-See [$(basename "$cmd_file")](${REPOSITORY}/blob/main/cmd/bookmark/$(basename "$cmd_file")) for implementation details.
+See [$(basename "$cmd_file")](${REPOSITORY}/blob/main/cmd/${PROJECT_NAME}/$(basename "$cmd_file")) for implementation details.
 EOF
 
   echo "  ✓ Generated commands/${cmd_url}.md"
@@ -443,11 +402,11 @@ if ! command -v gomarkdoc &>/dev/null; then
   go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
 fi
 
-echo "🧹 Cleaning old API docs..."
-rm -rf "$DOCS_API_DIR"
-mkdir -p "$DOCS_API_DIR"
-
 echo "📝 Generating API documentation..."
+
+# Generate into a temp directory to avoid Astro seeing a partially-written api/ dir
+DOCS_API_TEMP="$(mktemp -d)"
+trap 'rm -rf "$DOCS_API_TEMP"' EXIT
 
 # Generate docs for each internal package
 for pkg in internal/*/; do
@@ -461,7 +420,11 @@ for pkg in internal/*/; do
   echo "  - Processing $pkg_name..."
 
   # Generate to temp file first
-  gomarkdoc --output "/tmp/${pkg_name}.md" "./$pkg" 2>/dev/null || {
+  gomarkdoc \
+    --output "${DOCS_API_TEMP}/${pkg_name}.raw.md" \
+    --template-file "file=${ROOT_DIR}/docs/templates/file.gotxt" \
+    --footer $'## Source\n\nSee [internal/'"${pkg_name}"$'/]('"${REPOSITORY}"$'/blob/main/internal/'"${pkg_name}"$'/) for implementation details.' \
+    "./$pkg" 2>/dev/null || {
     echo "    ⚠️  No exported symbols in $pkg_name"
     continue
   }
@@ -473,21 +436,25 @@ for pkg in internal/*/; do
     echo "description: API documentation for the ${pkg_name} package"
     echo "---"
     echo ""
-    # Skip HTML comment and any frontmatter that gomarkdoc added
-    sed -n '/^# /,$p' "/tmp/${pkg_name}.md"
-  } >"$DOCS_API_DIR/${pkg_name}.md"
+    sed '1,/^# /d' "${DOCS_API_TEMP}/${pkg_name}.raw.md"
+  } >"${DOCS_API_TEMP}/${pkg_name}.md"
+  rm -f "${DOCS_API_TEMP}/${pkg_name}.raw.md"
 done
 
 # Generate docs for adapters
 echo "  - Processing adapters..."
-mkdir -p "$DOCS_API_DIR/adapters"
+mkdir -p "${DOCS_API_TEMP}/adapters"
 
 for adapter in internal/adapters/*/; do
   adapter_name=$(basename "$adapter")
   echo "    - Processing adapters/$adapter_name..."
 
   # Generate to temp file first
-  gomarkdoc --output "/tmp/adapter_${adapter_name}.md" "./$adapter" 2>/dev/null || {
+  gomarkdoc \
+    --output "${DOCS_API_TEMP}/adapters/${adapter_name}.raw.md" \
+    --template-file "file=${ROOT_DIR}/docs/templates/file.gotxt" \
+    --footer $'## Source\n\nSee [internal/adapters/'"${adapter_name}"$'/]('"${REPOSITORY}"$'/blob/main/internal/adapters/'"${adapter_name}"$'/) for implementation details.' \
+    "./$adapter" 2>/dev/null || {
     echo "      ⚠️  No exported symbols in $adapter_name"
     continue
   }
@@ -499,10 +466,15 @@ for adapter in internal/adapters/*/; do
     echo "description: API documentation for the ${adapter_name} adapter"
     echo "---"
     echo ""
-    # Skip HTML comment and any frontmatter that gomarkdoc added
-    sed -n '/^# /,$p' "/tmp/adapter_${adapter_name}.md"
-  } >"$DOCS_API_DIR/adapters/${adapter_name}.md"
+    sed '1,/^# /d' "${DOCS_API_TEMP}/adapters/${adapter_name}.raw.md"
+  } >"${DOCS_API_TEMP}/adapters/${adapter_name}.md"
+  rm -f "${DOCS_API_TEMP}/adapters/${adapter_name}.raw.md"
 done
+
+# Atomically swap in the newly generated api/ directory
+rm -rf "$DOCS_API_DIR"
+mv "$DOCS_API_TEMP" "$DOCS_API_DIR"
+trap - EXIT
 
 echo "✅ API documentation generated successfully!"
 echo "📁 Output: $DOCS_API_DIR"

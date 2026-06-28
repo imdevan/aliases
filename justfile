@@ -50,7 +50,7 @@ docs-generate:
 docs-dev:
 	@echo "🚀 Starting documentation development server..."
 	@just docs-generate
-	cd docs && bun run dev
+	find . \( -name "*.md" -o -name "*.go" -o -name "package.toml" \) ! -path "*/node_modules/*" ! -path "*/docs/src/content/docs/*" ! -path "*/.git/*" | entr -rn just docs-generate & cd docs && bun run dev
 
 docs-build:
 	@echo "🏗️  Building documentation site..."
@@ -74,8 +74,8 @@ init-aur-repo:
 	@echo "📦 Initializing AUR repository..."
 	./scripts/init_aur_repo.sh
 
-update-homebrew-formula VERSION:
-	@echo "🍺 Updating Homebrew formula..."
+update-homebrew-formula VERSION="":
+	@echo "🍺 Updating Homebrew formula to version {{VERSION}}..."
 	./scripts/update_homebrew_formula.sh {{VERSION}}
 
 update-aur-pkgbuild VERSION="":
@@ -97,6 +97,9 @@ tag-list:
 release VERSION="":
 	./scripts/release.sh {{VERSION}}
 
+github-release VERSION="":
+	./scripts/github_release.sh {{VERSION}}
+
 deploy-aur VERSION="":
 	./scripts/deploy_aur.sh {{VERSION}}
 
@@ -105,4 +108,17 @@ deploy-homebrew VERSION="":
 
 deploy-all VERSION="":
 	./scripts/deploy_all.sh {{VERSION}}
+
+publish-homebrew VERSION="":
+	./scripts/deploy_homebrew.sh {{VERSION}}
+
+publish-aur VERSION="":
+	./scripts/deploy_aur.sh {{VERSION}}
+
+publish VERSION="":
+	@just tag {{VERSION}}
+	@just github-release {{VERSION}}
+	@just release {{VERSION}}
+	@just publish-homebrew {{VERSION}}
+	@just publish-aur {{VERSION}}
 
