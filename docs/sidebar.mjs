@@ -38,6 +38,7 @@ const sidebar = [
     label: 'Commands',
     items: [
       { label: 'bookmark', link: '/commands/bookmark' },
+            { label: 'add', link: '/commands/add' },
             { label: 'completion', link: '/commands/completion' },
             { label: 'config', link: '/commands/config' },
             { label: 'config init', link: '/commands/config-init' },

@@ -56,20 +56,22 @@ Examples:
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `-c, --config` | string | config file path |
-| `-v, --version` | bool | print version information |
-| `-i, --interactive` | bool | interactive bookmark browser |
+| `-d, --description` | string | bookmark description |
+| `-f, --file` | string | file to open in editor after navigation |
+| `-s, --source` | string | path to bookmark (instead of current directory) |
 | `-t, --tmux` | bool | set tmux window name (same as alias) |
 | `-T, --tmux-name` | string | custom tmux window name |
-| `-d, --description` | string | bookmark description |
-| `-y, --yes` | bool | skip confirmation prompts |
-| `-f, --file` | string | file to open in editor after navigation |
-| `-e, --edit` | bool | open bookmarks file in editor |
 | `-x, --execute` | string | command to execute after navigation |
-| `-s, --source` | string | path to bookmark (instead of current directory) |
+| `-c, --config` | string | config file path |
+| `-i, --interactive` | bool | interactive bookmark browser |
+| `-a, --add` | bool | interactive add bookmark form |
+| `-e, --edit` | bool | open bookmarks file in editor |
+| `-y, --yes` | bool | skip confirmation, and interactive prompts |
+| `-v, --version` | bool | print version information |
 
 ## Available Commands
 
+- [`add`](/commands/add) - Add a new bookmark
 - [`completion`](/commands/completion) - Generate shell completion scripts
 - [`config`](/commands/config) - View or edit configuration
 - [`config init`](/commands/config-init) - Generate a default config file

@@ -4,7 +4,7 @@ description: A bookmark manager for your favorite shell
 ---
 
 
-<img width="480" height="270" alt="screenshot-2026-02-23_16-30-13" src="https://github.com/user-attachments/assets/65386b56-f06f-47be-9063-5c947b30dc51" />
+<img width="407" height="270" alt="screenshot-2026-03-06_14-10-16" src="https://github.com/user-attachments/assets/081eeec6-bbbd-4687-b29a-b659892a5e58" />
 
 A bookmark manager for your favorite shell
 
@@ -16,8 +16,19 @@ A bookmark manager for your favorite shell
 ## Install
 
 ```bash
-just build-run
+# With homebrew
+homebrew install imdevan/bookmark/bookmark
+
+# With AUR
+yay -S bookmark-plus
+
+# Manual
+git clone https://github.com/imdevan/bookmark.git
+cd bookmark
+just build && sudo just install
 ```
+
+See [install](https://devan.gg/bookmark/install/)  docs for more information.
 
 
 ## Bookmark your favorite folder
@@ -52,6 +63,7 @@ See configuration options for more info.
 ```bash
 bookmark                 # Bookmark a file
 bm                       # Interactive bookmark list
+bookmark add             # Interactive form to add a new bookmark
 bookmark config          # View or edit configuration
 bookmark config init     # Generate default config file
 bookmark completion      # Generate shell completion scripts
