@@ -61,8 +61,7 @@ func runConfigInit(cmd *cobra.Command, opts *configInitOptions) error {
 	if err != nil {
 		return err
 	}
-	manager := config.NewManager(cwd)
-	exists, err := manager.Exists()
+	exists, err := config.NewManager(cwd).Exists()
 	if err != nil {
 		return err
 	}
@@ -97,32 +96,32 @@ func renderConfigTemplate(cfg domain.Config) string {
 	builder.WriteString(fmt.Sprintf("# interactive_default = %t\n", cfg.InteractiveDefault))
 	builder.WriteString("# plain_text = false  # When true: output plain text confirmation messages and errors instead of styled output\n")
 	builder.WriteString(fmt.Sprintf("# confirm_delete = %t  # When false: delete bookmarks without confirmation prompt\n", cfg.ConfirmDelete))
-	
+
 	builder.WriteString("\n# Bookmark settings\n")
 	builder.WriteString(fmt.Sprintf("# bookmark_location = %q  # Directory for bookmark files\n", cfg.BookmarkLocation))
 	builder.WriteString(fmt.Sprintf("# navigation_tool = %q  # Options: cd, z, zoxide, none\n", cfg.NavigationTool))
 	builder.WriteString(fmt.Sprintf("# shell = %q  # Options: bash, zsh, fish, nu\n", cfg.Shell))
-	
+
 	builder.WriteString("\n# Auto-alias generation\n")
 	builder.WriteString(fmt.Sprintf("# auto_alias_separator = %q  # Character between first letters (empty = \"mcp\", \"-\" = \"m-c-p\")\n", cfg.AutoAliasSeparator))
 	builder.WriteString(fmt.Sprintf("# auto_alias_lowercase = %t\n", cfg.AutoAliasLowercase))
 	builder.WriteString(fmt.Sprintf("# default_alias_part_length = %d  # Number of characters to take from each part (1 = first letter only)\n", cfg.DefaultAliasPartLength))
-	
+
 	builder.WriteString("\n# Function alias wrapper\n")
 	builder.WriteString("# When enabled, adds a shell function that auto-sources bookmarks after running bookmark commands\n")
 	builder.WriteString("# Options: \"true\" (use default name \"bookmark\"), \"custom_name\" (use custom function name), \"false\" (disabled)\n")
 	builder.WriteString(fmt.Sprintf("# function_alias = %q\n", cfg.FunctionAlias))
-	
+
 	builder.WriteString("\n# Interactive alias wrapper\n")
 	builder.WriteString("# When enabled, adds a shell function for interactive bookmark navigation (bookmark -i)\n")
 	builder.WriteString("# The function displays the TUI and executes the selected bookmark command\n")
 	builder.WriteString("# Options: \"bm\" (default), \"custom_name\" (use custom function name), \"false\" (disabled)\n")
 	builder.WriteString(fmt.Sprintf("# interactive_alias = %q\n", cfg.InteractiveAlias))
-	
+
 	builder.WriteString("\n# Display\n")
 	builder.WriteString(fmt.Sprintf("# home_icon = %q  # Icon to represent home directory in list view (can be nerd font icon like \"\")\n", cfg.HomeIcon))
 	builder.WriteString(fmt.Sprintf("# default_sort_by = %q  # Options: newest, oldest, a-z, z-a\n", cfg.DefaultSortBy))
-	
+
 	builder.WriteString("\n# UI\n")
 	builder.WriteString("# list_spacing options: compact (title only), tight (title + description, no margin), space (default, with spacing)\n")
 	builder.WriteString(fmt.Sprintf("# list_spacing = %q\n", cfg.ListSpacing))
