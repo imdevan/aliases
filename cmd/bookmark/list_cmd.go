@@ -7,7 +7,6 @@ import (
 
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
-	"bookmark/internal/domain"
 )
 
 /*
@@ -40,16 +39,7 @@ func newListCmd() *cobra.Command {
 				cwd = "."
 			}
 
-			manager := config.NewManager(cwd)
-			var cfg domain.Config
-			if configPath != "" {
-				cfg, err = manager.LoadWithOverride(configPath)
-			} else {
-				cfg, err = manager.Load()
-			}
-			if err != nil {
-				cfg = domain.DefaultConfig()
-			}
+			cfg := config.Load(cwd, configPath)
 
 			bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
 			bookmarks, err := bmManager.Load()

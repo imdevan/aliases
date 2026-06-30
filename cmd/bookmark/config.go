@@ -50,11 +50,7 @@ func runConfig(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	manager := config.NewManager(cwd)
-	cfg, err := manager.Load()
-	if err != nil {
-		return err
-	}
+	cfg := config.Load(cwd, "")
 
 	path, err := resolveConfigPath(cwd)
 	if err != nil {

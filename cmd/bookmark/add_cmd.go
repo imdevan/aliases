@@ -52,16 +52,7 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	manager := config.NewManager(cwd)
-	var cfg domain.Config
-	if opts.configPath != "" {
-		cfg, err = manager.LoadWithOverride(opts.configPath)
-	} else {
-		cfg, err = manager.Load()
-	}
-	if err != nil {
-		cfg = domain.DefaultConfig()
-	}
+	cfg := config.Load(cwd, opts.configPath)
 
 	targetPath := cwd
 	if opts.source != "" {

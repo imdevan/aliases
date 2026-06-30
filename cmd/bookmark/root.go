@@ -109,16 +109,7 @@ func newRootCmd() *cobra.Command {
 				return fmt.Errorf("failed to get working directory: %w", err)
 			}
 
-			manager := config.NewManager(cwd)
-			var cfg domain.Config
-			if opts.configPath != "" {
-				cfg, err = manager.LoadWithOverride(opts.configPath)
-			} else {
-				cfg, err = manager.Load()
-			}
-			if err != nil {
-				cfg = domain.DefaultConfig()
-			}
+			cfg := config.Load(cwd, opts.configPath)
 
 			// Interactive mode
 			if opts.interactive || (len(args) == 0 && cfg.InteractiveDefault && !opts.tmux && opts.description == "" && !opts.edit && !opts.add) {

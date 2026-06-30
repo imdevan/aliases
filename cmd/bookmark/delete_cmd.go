@@ -9,7 +9,6 @@ import (
 
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
-	"bookmark/internal/domain"
 	"bookmark/internal/ui"
 )
 
@@ -42,17 +41,7 @@ func newDeleteCmd() *cobra.Command {
 			alias := args[0]
 
 			cwd, _ := os.Getwd()
-			manager := config.NewManager(cwd)
-			var cfg domain.Config
-			var err error
-			if configPath != "" {
-				cfg, err = manager.LoadWithOverride(configPath)
-			} else {
-				cfg, err = manager.Load()
-			}
-			if err != nil {
-				cfg = domain.DefaultConfig()
-			}
+			cfg := config.Load(cwd, configPath)
 
 			bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
 
