@@ -11,6 +11,7 @@ import (
 	"bookmark/internal/adapters/editor"
 	"bookmark/internal/config"
 	"bookmark/internal/domain"
+	"bookmark/internal/flags"
 	"bookmark/internal/utils"
 )
 
@@ -51,8 +52,8 @@ func newConfigInitCmd() *cobra.Command {
 			return runConfigInit(cmd, opts)
 		},
 	}
-	cmd.Flags().BoolVarP(&opts.force, "force", "f", false, "overwrite existing config")
-	cmd.Flags().BoolVarP(&opts.openInEditor, "editor", "e", false, "open config in editor after creation")
+	flags.Set(cmd, &opts.force, "force", "f", "overwrite existing config", "")
+	flags.Set(cmd, &opts.openInEditor, "editor", "e", "open config in editor after creation", "")
 	return cmd
 }
 

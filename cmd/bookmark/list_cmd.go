@@ -7,6 +7,7 @@ import (
 
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
+	"bookmark/internal/flags"
 )
 
 /*
@@ -77,7 +78,7 @@ func newListCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&configPath, "config", "c", "", "config file path")
+	flags.Set(cmd, &configPath, "config", "c", "config file path", "config")
 
 	return cmd
 }

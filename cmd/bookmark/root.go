@@ -18,6 +18,7 @@ import (
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
 	"bookmark/internal/domain"
+	"bookmark/internal/flags"
 	pkg "bookmark/internal/package"
 	"bookmark/internal/ui"
 )
@@ -131,30 +132,22 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 
-	// @flags
+	flags.Set(cmd, &opts.description, "description", "d", "bookmark description", "bookmark")
+	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation", "bookmark")
+	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)", "bookmark")
+	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)", "bookmark")
+	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name", "bookmark")
+	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation", "bookmark")
 
-	// @group: Bookmark options
-	cmd.Flags().StringVarP(&opts.description, "description", "d", "", "bookmark description")
-	cmd.Flags().StringVarP(&opts.file, "file", "f", "", "file to open in editor after navigation")
-	cmd.Flags().StringVarP(&opts.source, "source", "s", "", "path to bookmark (instead of current directory)")
-	cmd.Flags().BoolVarP(&opts.tmux, "tmux", "t", false, "set tmux window name (same as alias)")
-	cmd.Flags().StringVarP(&opts.tmuxName, "tmux-name", "T", "", "custom tmux window name")
-	cmd.Flags().StringVarP(&opts.execute, "execute", "x", "", "command to execute after navigation")
+	flags.SetPersistent(cmd, &opts.configPath, "config", "c", "config file path", "config")
 
-	// @group: Config
-	cmd.PersistentFlags().StringVarP(&opts.configPath, "config", "c", "", "config file path")
+	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive bookmark browser", "interactive")
+	flags.Set(cmd, &opts.add, "add", "a", "interactive add bookmark form", "interactive")
+	flags.Set(cmd, &opts.edit, "edit", "e", "open bookmarks file in editor", "interactive")
 
-	// TODO: Consider removing as bm function alias works better and is the default use case for interacitve mode
-	// @group: Interactive
-	// @description: show interactive list. **Note**: it is reocmmended to use the `bm` alias in order to use
-	// 	the interacive mode as the current flag implementation will not allow you to navigate.
-	cmd.Flags().BoolVarP(&opts.interactive, "interactive", "i", false, "interactive bookmark browser")
-	cmd.Flags().BoolVarP(&opts.add, "add", "a", false, "interactive add bookmark form")
-	cmd.Flags().BoolVarP(&opts.edit, "edit", "e", false, "open bookmarks file in editor")
-	cmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "skip confirmation, and interactive prompts")
+	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts", "interactive")
 
-	// @group: Meta
-	cmd.Flags().BoolVarP(&opts.showVersion, "version", "v", false, "print version information")
+	flags.Set(cmd, &opts.showVersion, "version", "v", "print version information", "meta")
 
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newCompletionCmd())

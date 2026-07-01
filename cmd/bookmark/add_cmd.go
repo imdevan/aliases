@@ -11,6 +11,7 @@ import (
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
 	"bookmark/internal/domain"
+	"bookmark/internal/flags"
 	"bookmark/internal/ui"
 )
 
@@ -35,14 +36,16 @@ func newAddCmd() *cobra.Command {
 			return runAddInteractive(cmd, args, opts)
 		},
 	}
-	cmd.Flags().StringVarP(&opts.configPath, "config", "c", "", "config file path")
-	cmd.Flags().BoolVarP(&opts.tmux, "tmux", "t", false, "set tmux window name (same as alias)")
-	cmd.Flags().StringVarP(&opts.tmuxName, "tmux-name", "T", "", "custom tmux window name")
-	cmd.Flags().StringVarP(&opts.description, "description", "d", "", "bookmark description")
-	cmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "skip form, save directly")
-	cmd.Flags().StringVarP(&opts.file, "file", "f", "", "file to open in editor after navigation")
-	cmd.Flags().StringVarP(&opts.execute, "execute", "x", "", "command to execute after navigation")
-	cmd.Flags().StringVarP(&opts.source, "source", "s", "", "path to bookmark (instead of current directory)")
+
+	flags.Set(cmd, &opts.configPath, "config", "c", "config file path", "config")
+	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)", "bookmark")
+	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name", "bookmark")
+	flags.Set(cmd, &opts.description, "description", "d", "bookmark description", "bookmark")
+	flags.Set(cmd, &opts.yes, "yes", "y", "skip form, save directly", "bookmark")
+	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation", "bookmark")
+	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation", "bookmark")
+	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)", "bookmark")
+
 	return cmd
 }
 

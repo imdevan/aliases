@@ -9,6 +9,7 @@ import (
 
 	"bookmark/internal/bookmark"
 	"bookmark/internal/config"
+	"bookmark/internal/flags"
 	"bookmark/internal/ui"
 )
 
@@ -86,8 +87,8 @@ func newDeleteCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&configPath, "config", "c", "", "config file path")
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "skip confirmation")
+	flags.Set(cmd, &configPath, "config", "c", "config file path", "config")
+	flags.Set(cmd, &force, "force", "f", "skip confirmation", "")
 
 	return cmd
 }
