@@ -104,7 +104,6 @@ func newRootCmd() *cobra.Command {
 				return nil
 			}
 
-			// Load config
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("failed to get working directory: %w", err)
@@ -375,6 +374,7 @@ func openEditor(editorName, filePath string, line int) error {
 	return editorAdapter.Open(filePath)
 }
 
+// TODO: this should basically just be calling newAddCmd. see: cmd/bookmark/root.go:161
 func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd string) error {
 	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
 	defaultAlias := bookmark.GenerateAlias(cwd, cfg.AutoAliasSeparator, cfg.AutoAliasLowercase, cfg.DefaultAliasPartLength)
