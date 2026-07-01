@@ -8,6 +8,7 @@ import (
 // Set registers a flag on cmd inferred from the type of ptr.
 // Supported types: *string (default ""), *bool (default false), *int (default 0).
 // group annotates the flag for help grouping; pass "" to skip.
+// If you want to define flags differently you can simply call cmd.flags directly
 func Set(cmd *cobra.Command, ptr any, name, shorthand, usage, group string) {
 	register(cmd.Flags(), ptr, name, shorthand, usage)
 	if group != "" {
@@ -23,6 +24,7 @@ func SetPersistent(cmd *cobra.Command, ptr any, name, shorthand, usage, group st
 	}
 }
 
+// register registers a flag based on the pointer type passed.
 func register(fs *pflag.FlagSet, ptr any, name, shorthand, usage string) {
 	switch p := ptr.(type) {
 	case *string:
