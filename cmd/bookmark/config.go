@@ -12,26 +12,23 @@ import (
 	"bookmark/internal/utils"
 )
 
-/*
-newConfigCmd creates the config command for viewing or editing configuration.
-
-The config command opens the configuration file in your configured editor.
-If the config file doesn't exist, it will be created with default values.
-
-Subcommands:
-  - init: Generate a default config file
-
-Examples:
-
-	# Open config in editor
-	bookmark config
-
-	# Initialize new config file
-	bookmark config init
-
-	# Force overwrite existing config
-	bookmark config init --force
-*/
+// @docs-command:
+//
+//		name: config
+//		description:
+//			The root command serves multiple purposes:
+//	  		- Without arguments: Opens interactive bookmark browser (if configured)
+//	  		- With alias argument: Navigates to the bookmarked directory
+//		example:
+//			```bash
+//			~/foo
+//			$ bookmark			# create alias "f" that points to ~/foo
+//
+//			~/foo
+//			$ bookmark bar	# create alias "bar" that points to ~/foo
+//			```
+//		note:
+//			On first call `~/.bookmark/bookmarks.sh` and `~/.config/bookmark/config.toml` will be created.
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",

@@ -20,29 +20,30 @@ type configInitOptions struct {
 	openInEditor bool
 }
 
-/*
-newConfigInitCmd creates the config init command for generating a default config file.
-
-The config init command creates a new configuration file with default values
-at the standard XDG config location ($XDG_CONFIG_HOME/bookmark/config.toml).
-
-Flags:
-  - --force/-f: Overwrite existing config file
-  - --editor/-e: Open the config file in your editor after creation
-
-The generated config file includes commented examples for all available options.
-
-Examples:
-
-	# Generate default config
-	bookmark config init
-
-	# Overwrite existing config
-	bookmark config init --force
-
-	# Generate and open in editor
-	bookmark config init --editor
-*/
+// @docs-command:
+//
+// name: config init
+// description:
+//
+//	The config init command creates a new configuration file with default values
+//	at the standard XDG config location ($XDG_CONFIG_HOME/bookmark/config.toml).
+//
+// example:
+//
+//	```bash
+//	# Generate default config
+//	bookmark config init
+//
+//	# Overwrite existing config
+//	bookmark config init --force
+//
+//	# Generate and open in editor
+//	bookmark config init --editor
+//	```
+//
+// note:
+//
+//	The generated config file includes commented examples for all available options.
 func newConfigInitCmd() *cobra.Command {
 	opts := &configInitOptions{}
 	cmd := &cobra.Command{

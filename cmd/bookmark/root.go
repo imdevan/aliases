@@ -52,45 +52,23 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-/*
-newRootCmd creates the root command for the bookmark CLI.
-
-The root command serves multiple purposes:
-  - Without arguments: Opens interactive bookmark browser (if configured)
-  - With alias argument: Navigates to the bookmarked directory
-  - With --interactive/-i: Forces interactive mode
-  - With --edit/-e: Opens bookmarks file in editor
-  - With --version/-v: Prints version information
-
-When adding a bookmark, you can specify:
-  - --description/-d: Add a description to the bookmark
-  - --tmux/-t: Set tmux window name to match alias
-  - --tmux-name/-T: Set custom tmux window name
-  - --file/-f: Specify a file to open after navigation
-  - --execute/-x: Run a command after navigation
-  - --source/-s: Bookmark a different path than current directory
-  - --yes/-y: Skip confirmation prompts
-
-Examples:
-
-	# Add bookmark for current directory
-	bookmark myproject
-
-	# Add bookmark with description
-	bookmark myproject -d "My awesome project"
-
-	# Navigate to bookmark (in interactive mode)
-	bookmark
-
-	# Navigate to specific bookmark
-	bookmark myproject
-
-	# Edit bookmarks file
-	bookmark -e
-
-	# List all bookmarks
-	bookmark list
-*/
+// @docs-command:root
+//
+//		name: bookmark
+//		description:
+//			The root command serves multiple purposes:
+//	  		- Without arguments: Opens interactive bookmark browser (if configured)
+//	  		- With alias argument: Navigates to the bookmarked directory
+//		example:
+//			```bash
+//			~/foo
+//			$ bookmark			# create alias "f" that points to ~/foo
+//
+//			~/foo
+//			$ bookmark bar	# create alias "bar" that points to ~/foo
+//			```
+//		note:
+//			On first call `~/.bookmark/bookmarks.sh` and `~/.config/bookmark/config.toml` will be created.
 func newRootCmd() *cobra.Command {
 	opts := &rootOptions{}
 	cmd := &cobra.Command{
@@ -131,28 +109,67 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 
-	flags.Set(cmd, &opts.description, "description", "d", "bookmark description", "bookmark")
-	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation", "bookmark")
-	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)", "bookmark")
-	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)", "bookmark")
-	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name", "bookmark")
-	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation", "bookmark")
+	// @docs-flag-group:
+	//
+	// 	name: bookmark
+	// 	description:
+	// 		Options related to adding a bookmark.
+	// 	example:
+	//		```bash
+	//		~/foo
+	//		$ bookmark foo -t -x "just start-dev" -f "./example.md" -d "an example bookmark"
+	//		```
+	//
+	//		Creates a shell alias `foo` that:
+	//		- navigates to `~/foo`
+	//		- renames the current tmux window to `foo`
+	//		- run script `just start-dev`
+	//		- then opens `~/foo/example.md` in the shells default editor
+	//		- with a comment description that can be seen when looking at the bookmark list or in the generated .sh file.
+	//	flags: description, file, source, tmux, tmux-name, execute
+	flags.Set(cmd, &opts.description, "description", "d", "bookmark description", "")
+	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation")
+	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)")
+	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)")
+	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name")
+	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation")
 
-	flags.SetPersistent(cmd, &opts.configPath, "config", "c", "config file path", "config")
+	// @docs-flag-group:
+	//
+	//	name: config
+	//	description:
+	//		Use a different config other than the standard `~/.config/bookmark/config.toml`"
+	//	example:
+	//		```bash
+	//		~/foo
+	//		$ bookmark -c ~/foo/local-bookmark-config.toml
+	//		```
+	// 		Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for config options
+	// 	flags: config
+	flags.SetPersistent(cmd, &opts.configPath, "config", "c", "config file path")
 
-	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive bookmark browser", "interactive")
-	flags.Set(cmd, &opts.add, "add", "a", "interactive add bookmark form", "interactive")
-	flags.Set(cmd, &opts.edit, "edit", "e", "open bookmarks file in editor", "interactive")
+	// @docs-flag-group:
+	//
+	// 	name: interactive
+	// 	note:
+	//		`-i` flag only prints the bookmark location. Use `bm` alias for interactive navigation.
+	//	flags: interactive, add, edit, yes
+	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive bookmark browser")
+	flags.Set(cmd, &opts.add, "add", "a", "interactive add bookmark form")
+	flags.Set(cmd, &opts.edit, "edit", "e", "open bookmarks file in editor")
+	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts")
 
-	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts", "interactive")
+	// @docs-flag-group:
+	//
+	// 	name: meta
+	//	flags: version
+	flags.Set(cmd, &opts.showVersion, "version", "v", "print version information")
 
-	flags.Set(cmd, &opts.showVersion, "version", "v", "print version information", "meta")
-
+	cmd.AddCommand(newAddCmd())
+	cmd.AddCommand(newDeleteCmd())
+	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newCompletionCmd())
-	cmd.AddCommand(newListCmd())
-	cmd.AddCommand(newDeleteCmd())
-	cmd.AddCommand(newAddCmd())
 
 	return cmd
 }

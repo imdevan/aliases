@@ -13,23 +13,22 @@ import (
 	"bookmark/internal/ui"
 )
 
-/*
-newDeleteCmd creates the delete command for removing bookmarks.
-
-The delete command removes a bookmark by its alias.
-By default, it will prompt for confirmation before deleting.
-
-Flags:
-  - --force/-f: Skip confirmation prompt and delete immediately
-
-Examples:
-
-	# Delete with confirmation
-	bookmark delete myproject
-
-	# Force delete without confirmation
-	bookmark delete myproject --force
-*/
+// @docs-command:
+//
+//	name: delete
+//	description:
+//		The delete command removes a bookmark by its alias.
+//		By default, it will prompt for confirmation before deleting.
+//	example:
+//		```bash
+//		~/foo
+//		$ bookmark	# create alias "f" that points to ~/foo
+//
+//		~/foo
+//		$ bookmark delete f	# delete alias "f"
+//		```
+//	note:
+//		Delete confirmation can be skipped by setting `confirm_delete=false` in the [config](https://devan.gg/bookmark/configuration/)
 func newDeleteCmd() *cobra.Command {
 	var configPath string
 	var force bool
