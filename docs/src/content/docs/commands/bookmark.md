@@ -1,6 +1,6 @@
 ---
 title: bookmark
-description: short
+description: Bookmark manager
 ---
 
 The root command serves multiple purposes:
@@ -47,6 +47,12 @@ Creates a shell alias `foo` that:
 
 | Flag | Type | Description |
 |------|------|-------------|
+| -d, --description | string | bookmark description |
+| -f, --file | string | file to open in editor after navigation |
+| -s, --source | string | path to bookmark (instead of current directory) |
+| -t, --tmux | bool | set tmux window name (same as alias) |
+| -T, --tmux-name | string | custom tmux window name |
+| -x, --execute | string | command to execute after navigation |
 
 ### config
 
@@ -60,6 +66,7 @@ Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for con
 
 | Flag | Type | Description |
 |------|------|-------------|
+| -c, --config | string | config file path |
 
 ### interactive
 
@@ -70,6 +77,10 @@ Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for con
 
 | Flag | Type | Description |
 |------|------|-------------|
+| -i, --interactive | bool | interactive bookmark browser |
+| -a, --add | bool | interactive add bookmark form |
+| -e, --edit | bool | open bookmarks file in editor |
+| -y, --yes | bool | skip confirmation, and interactive prompts |
 
 ### meta
 
@@ -77,17 +88,18 @@ Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for con
 
 | Flag | Type | Description |
 |------|------|-------------|
+| -v, --version | bool | print version information |
 
 
 ## Available Commands
 
 
 - [`add`](/commands/add) - Add a new bookmark
-- [`newCompletionCmd`](/commands/newCompletionCmd) - Generate shell completion scripts
+- [`completion`](/commands/completion) - Generate shell completion scripts
 - [`config`](/commands/config) - View or edit configuration
-- [`config-config init`](/commands/config-config init) - Generate a default config file
+- [`config-init`](/commands/config-init) - Generate a default config file
 - [`delete`](/commands/delete) - Delete a bookmark
-- [`newListCmd`](/commands/newListCmd) - List all bookmarks
+- [`list`](/commands/list) - List all bookmarks
 
 ## Source
 

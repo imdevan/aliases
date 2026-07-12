@@ -27,6 +27,58 @@ On first call `~/.bookmark/bookmarks.sh` and `~/.config/bookmark/config.toml` wi
 bookmark config
 ```
 
+## Flags
+
+### bookmark
+
+Options related to adding a bookmark.
+#### Example
+```bash
+~/foo
+$ bookmark foo -t -x "just start-dev" -f "./example.md" -d "an example bookmark"
+```
+
+Creates a shell alias `foo` that:
+- navigates to `~/foo`
+- renames the current tmux window to `foo`
+- run script `just start-dev`
+- then opens `~/foo/example.md` in the shells default editor
+- with a comment description that can be seen when looking at the bookmark list or in the generated .sh file.
+
+| Flag | Type | Description |
+|------|------|-------------|
+
+### config
+
+Use a different config other than the standard `~/.config/bookmark/config.toml`"
+#### Example
+```bash
+~/foo
+$ bookmark -c ~/foo/local-bookmark-config.toml
+```
+Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for config options
+
+| Flag | Type | Description |
+|------|------|-------------|
+
+### interactive
+
+
+:::note
+`-i` flag only prints the bookmark location. Use `bm` alias for interactive navigation.
+:::
+
+| Flag | Type | Description |
+|------|------|-------------|
+
+### meta
+
+
+
+| Flag | Type | Description |
+|------|------|-------------|
+
+
 ## Source
 
-See [config.go](https://github.com/imdevan/bookmark/blob/main/cmd/bookmark/config.go) for implementation details.
+See [root.go](https://github.com/imdevan/bookmark/blob/main/cmd/bookmark/root.go) for implementation details.

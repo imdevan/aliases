@@ -25,16 +25,16 @@ const sidebar = [
   { label: 'Commands', items: [
     { label: 'bookmark', link: '/commands/bookmark' },
     { label: 'add', link: '/commands/add' },
+    { label: 'completion', link: '/commands/completion' },
     {
       label: 'config',
       items: [
         { label: 'config', link: '/commands/config' },
-        { label: 'config config init', link: '/commands/config-config init' },
+        { label: 'config init', link: '/commands/config-init' },
       ],
     },
     { label: 'delete', link: '/commands/delete' },
-    { label: 'newCompletionCmd', link: '/commands/newCompletionCmd' },
-    { label: 'newListCmd', link: '/commands/newListCmd' },
+    { label: 'list', link: '/commands/list' },
 
   ] },
   { label: 'Configuration', link: '/configuration' },
