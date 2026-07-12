@@ -4,6 +4,7 @@
 name = "bookmark"
 # Name for distribution packages (AUR, Homebrew)
 package_name = "bookmark-plus"
+homebrew_package_name = "bookmark"
 module = "bookmark"
 description = "A bookmark manager for your favorite shell"
 short = "Bookmark manager"
