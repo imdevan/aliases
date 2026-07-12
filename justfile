@@ -2,7 +2,7 @@
 # ================================================================================
 set shell := ["zsh", "-cu"]
 
-PACKAGE := "go-cli-docs"
+PACKAGE := "bookmark"
 PACKAGE_BIN := "./bin/" + PACKAGE
 PACKAGE_CMD := "./cmd/" + PACKAGE
 
