@@ -78,7 +78,7 @@ func newListCmd() *cobra.Command {
 		},
 	}
 
-	flags.Set(cmd, &configPath, "config", "c", "config file path", "config")
+	flags.Set(cmd, &configPath, "config", "c", "config file path")
 
 	return cmd
 }

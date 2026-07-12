@@ -53,8 +53,8 @@ func newConfigInitCmd() *cobra.Command {
 			return runConfigInit(cmd, opts)
 		},
 	}
-	flags.Set(cmd, &opts.force, "force", "f", "overwrite existing config", "")
-	flags.Set(cmd, &opts.openInEditor, "editor", "e", "open config in editor after creation", "")
+	flags.Set(cmd, &opts.force, "force", "f", "overwrite existing config")
+	flags.Set(cmd, &opts.openInEditor, "editor", "e", "open config in editor after creation")
 	return cmd
 }
 

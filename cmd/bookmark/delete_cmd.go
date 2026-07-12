@@ -86,8 +86,8 @@ func newDeleteCmd() *cobra.Command {
 		},
 	}
 
-	flags.Set(cmd, &configPath, "config", "c", "config file path", "config")
-	flags.Set(cmd, &force, "force", "f", "skip confirmation", "")
+	flags.Set(cmd, &configPath, "config", "c", "config file path")
+	flags.Set(cmd, &force, "force", "f", "skip confirmation")
 
 	return cmd
 }

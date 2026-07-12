@@ -127,7 +127,7 @@ func newRootCmd() *cobra.Command {
 	//		- then opens `~/foo/example.md` in the shells default editor
 	//		- with a comment description that can be seen when looking at the bookmark list or in the generated .sh file.
 	//	flags: description, file, source, tmux, tmux-name, execute
-	flags.Set(cmd, &opts.description, "description", "d", "bookmark description", "")
+	flags.Set(cmd, &opts.description, "description", "d", "bookmark description")
 	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation")
 	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)")
 	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)")
