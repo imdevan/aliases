@@ -148,3 +148,4 @@ This will open the config file in your configured editor.
 - [Config API Documentation](/api/config) - Detailed API documentation for the config package
 - [Domain API Documentation](/api/domain) - Domain models including Config struct
 - [config init command](/commands/config-init) - Generate default config file
+

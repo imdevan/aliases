@@ -3,7 +3,7 @@ const isProduction = stage === "production"
 
 export default {
   url: isProduction ? "https://devan.gg" : "http://localhost:4321",
-  basePath:  isProduction ? "/bookmark" : "/",
+  basePath: isProduction ? "/bookmark" : "/",
   github: "https://github.com/imdevan/bookmark/",
   githubDocs: "https://github.com/imdevan/bookmark/",
   title: "bookmark",

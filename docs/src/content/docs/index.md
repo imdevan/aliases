@@ -1,5 +1,5 @@
 ---
-title: bookmark
+title: Bookmark
 description: A bookmark manager for your favorite shell
 ---
 
@@ -36,7 +36,7 @@ See [install](https://devan.gg/bookmark/install/)  docs for more information.
 ```bash
 ~/Projects/favorite-project
 bookmark
-"bookmark fb created!"
+"bookmark fp created!"
 
 # Pass a name
 bookmark foo
@@ -49,7 +49,14 @@ bookmark -t
 bookmark -T foo
 ```
 
-Bookmarks are created by default at `~/.bookmarks/bookmarks.sh`
+
+## How `bookmark` works
+
+A **bookmark** in this case is an alias that is sourced into the shell on load time. 
+
+Aliases live in `~/.bookmarks/bookmarks.sh` by default. The location can be changed via config options. 
+
+Bookmark is essentially a light weight wrapper around that file. 
 
 ## Using different shell? 
 
@@ -69,36 +76,27 @@ bookmark config init     # Generate default config file
 bookmark completion      # Generate shell completion scripts
 ```
 
-## Development
-
-```bash
-just sync            # Sync project from package.toml
-just build           # Build the binary
-just build-run       # Build and run the binary
-just dev-build       # Build with debug symbols
-just test            # Run tests
-just test-verbose    # Run tests with verbose output
-just watch           # Watch for changes and rebuild
-just cross-platform  # Build for multiple platforms
-just install         # Install to /usr/local/bin
-just clean           # Remove build artifacts
-```
-
 ## Configuration
 
-Configuration file location: `$XDG_CONFIG_HOME/go-cli-template/config.toml`
+Bookmark is designed to be highly customizable. 
 
-See `example-config.toml` for available configuration options.
+```bash
+bookmark config # open config file location
+```
+
+Configuration file location: `~/.config/bookmark/config.toml`  (`$XDG_CONFIG_HOME/bookmark/config.toml`)
+
+See [configuration](./CONFIGURATION.md) for installation options.
 
 ## Installation
 
-See `INSTALL.md` for installation options.
+See [install](./INSTALL.md) for installation options.
 
 ## Customization
 
 This template is designed to be customized for your specific CLI tool needs:
-
 1. Edit `package.toml` with your project details (name, module, description, etc.)
+
 2. Run `just sync` to sync changes across all files
 3. Review changes with `git diff`
 4. Build and test: `just build && just test`
@@ -123,5 +121,6 @@ The `package.toml` file is the single source of truth for project metadata. The 
 # Thank you!
 
 This project was made by deconstructing a another cli project of mine [Prompter](http://devan.gg/prompter-cli/). Check it out if you like fiddling with coding agents and want a more vim centric way of managing your prompting!
+
 
 

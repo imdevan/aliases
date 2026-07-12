@@ -1,5 +1,5 @@
 ---
-title: Install
+title: Installation
 description: Installation instructions for bookmark
 ---
 
@@ -103,3 +103,4 @@ source ~/.bookmarks/bookmarks.nu
 ```
 
 See [configuration docs](/configuration) for more details.
+
