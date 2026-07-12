@@ -216,7 +216,8 @@ code:not(pre code) {
 }
 
 /* Tables - classic ledger style */
-table {
+.sl-markdown-content table {
+  display: table;
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -226,7 +227,7 @@ table {
   box-shadow: var(--sl-shadow-sm);
 }
 
-th {
+.sl-markdown-content th {
   background: var(--sl-color-bg-nav);
   font-weight: 600;
   text-transform: uppercase;
@@ -236,12 +237,12 @@ th {
   border-bottom: 2px solid var(--sl-color-hairline);
 }
 
-td {
+.sl-markdown-content td {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--sl-color-hairline-light);
 }
 
-tr:hover {
+.sl-markdown-content tr:hover {
   background: var(--sl-color-bg-inline-code);
 }
 
