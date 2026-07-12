@@ -201,6 +201,47 @@ pre {
   border-color: var(--sl-color-hairline) !important;
 }
 
+/* Expressive code block overrides: styling directly on header and pre instead of the parent frame */
+.expressive-code .frame {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.expressive-code figcaption.header {
+  border: 1px solid var(--sl-color-hairline) !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+
+/* Standalone pre (when there is no header) */
+.expressive-code pre {
+  border: 1px solid var(--sl-color-hairline) !important;
+  border-radius: 6px !important;
+  box-shadow: var(--sl-shadow-md) !important;
+}
+
+/* Pre when preceded by a header */
+.expressive-code figcaption.header + pre {
+  border-top: none !important;
+  border-radius: 0 0 6px 6px !important;
+}
+
+:root[data-theme='dark'] .expressive-code figcaption.header {
+  border-color: var(--sl-color-hairline-light) !important;
+}
+
+:root[data-theme='dark'] .expressive-code pre {
+  border-color: var(--sl-color-hairline-light) !important;
+}
+
+:root:not([data-theme='dark']) .expressive-code figcaption.header {
+  border-color: var(--sl-color-hairline) !important;
+}
+
+:root:not([data-theme='dark']) .expressive-code pre {
+  border-color: var(--sl-color-hairline) !important;
+}
+
 /* Ensure code blocks have borders on all sides */
 pre code {
   display: block;
