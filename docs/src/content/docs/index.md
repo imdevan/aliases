@@ -58,6 +58,10 @@ Aliases live in `~/.bookmarks/bookmarks.sh` by default. The location can be chan
 
 Bookmark is essentially a light weight wrapper around that file. 
 
+### Escaping and Quoting
+
+When bookmarks are saved, the tool automatically escapes and quotes all fields (such as directory paths, descriptions, tmux window names, and associated files or scripts) to ensure they are written and parsed correctly regardless of special characters like single/double quotes, pipes (`|`), or newlines. The escaping behavior is adapted automatically to your configured shell (POSIX, Fish, or Nushell). 
+
 ## Using different shell? 
 
 Bookmark is set up for zsh first but works with any shell. Run `bookmark config init` to create a custom config file.
