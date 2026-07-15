@@ -40,7 +40,6 @@ type rootOptions struct {
 	description string
 	yes         bool
 	file        string
-	edit        bool
 	execute     string
 	source      string
 }
@@ -89,19 +88,24 @@ func newRootCmd() *cobra.Command {
 
 			cfg := config.Load(cwd, opts.configPath)
 
-			// Interactive mode
-			if opts.interactive || (len(args) == 0 && cfg.InteractiveDefault && !opts.tmux && opts.description == "" && !opts.edit && !opts.add) {
+			// Interactive mode: if explicit -i flag, or if no args/commands are provided
+			isNoArgsOrCommands := len(args) == 0 &&
+				!opts.add &&
+				!opts.tmux &&
+				opts.tmuxName == "" &&
+				opts.description == "" &&
+				opts.file == "" &&
+				opts.execute == "" &&
+				opts.source == "" &&
+				!opts.yes
+
+			if opts.interactive || isNoArgsOrCommands {
 				return runInteractive(cmd, opts, cfg)
 			}
 
 			// Interactive add form
 			if opts.add {
 				return runAddForm(cmd, opts, cfg, cwd)
-			}
-
-			// Edit mode
-			if opts.edit {
-				return runEdit(cmd, args, opts, cfg)
 			}
 
 			// Add bookmark mode
@@ -153,10 +157,9 @@ func newRootCmd() *cobra.Command {
 	// 	name: interactive
 	// 	note:
 	//		`-i` flag only prints the bookmark location. Use `bm` alias for interactive navigation.
-	//	flags: interactive, add, edit, yes
+	//	flags: interactive, add, yes
 	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive bookmark browser")
 	flags.Set(cmd, &opts.add, "add", "a", "interactive add bookmark form")
-	flags.Set(cmd, &opts.edit, "edit", "e", "open bookmarks file in editor")
 	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts")
 
 	// @docs-flag-group:
@@ -167,6 +170,7 @@ func newRootCmd() *cobra.Command {
 
 	cmd.AddCommand(newAddCmd())
 	cmd.AddCommand(newDeleteCmd())
+	cmd.AddCommand(newEditCmd())
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newCompletionCmd())
@@ -293,90 +297,6 @@ func printSuccess(cfg domain.Config, action, alias, path string) {
 	fmt.Println(ui.SuccessMessage(theme, action, body, inline))
 }
 
-func runEdit(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Config) error {
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
-
-	// If no alias provided, just open the bookmarks file in editor
-	if len(args) == 0 {
-		return openEditor(cfg.Editor, cfg.BookmarkFile(), 0)
-	}
-
-	alias := args[0]
-
-	// Check if bookmark exists
-	exists, err := bmManager.Exists(alias)
-	if err != nil {
-		return err
-	}
-
-	var bm domain.Bookmark
-	if exists {
-		bm, err = bmManager.Get(alias)
-		if err != nil {
-			return err
-		}
-	} else {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
-		}
-		bm = domain.Bookmark{
-			Alias: alias,
-			Path:  cwd,
-		}
-	}
-
-	theme := ui.ThemeFromConfig(cfg)
-	m := ui.NewBookmarkFormModelEdit(theme, bm)
-	if !exists {
-		m = m.WithTitle(fmt.Sprintf("'%s' Not Found, Add Bookmark", alias))
-	}
-
-	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
-	p := tea.NewProgram(m, progOpts...)
-	result, err := p.Run()
-	if err != nil {
-		return err
-	}
-
-	fm, ok := result.(ui.BookmarkFormModel)
-	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.CanceledMessage(theme, "Edit"))
-		return nil
-	}
-
-	newAlias, newPath, newDesc, newFile, tmuxWindowName, postJumpScript := fm.Values()
-
-	// If the alias changed and we are editing an existing one, delete the old one
-	if exists && newAlias != alias {
-		if err := bmManager.Delete(alias); err != nil {
-			return err
-		}
-	}
-
-	newBm := domain.Bookmark{
-		Alias:          newAlias,
-		Path:           newPath,
-		Description:    newDesc,
-		File:           newFile,
-		TmuxWindowName: tmuxWindowName,
-		PostJumpScript: postJumpScript,
-	}
-	if exists {
-		newBm.CreatedAt = bm.CreatedAt
-	}
-
-	if err := bmManager.Add(newBm); err != nil {
-		return err
-	}
-
-	action := "created"
-	if exists {
-		action = "updated"
-	}
-	printSuccess(cfg, action, newAlias, newPath)
-	return nil
-}
 
 func openEditor(editorName, filePath string, line int) error {
 	if editorName == "" {

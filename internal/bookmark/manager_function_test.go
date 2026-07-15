@@ -153,9 +153,9 @@ func TestManager_FunctionWrapperSourcesCorrectFile(t *testing.T) {
 		t.Error("expected 'command bookmark' to avoid recursion")
 	}
 
-	// Verify conditional execution with &&
-	if !strings.Contains(contentStr, "&&") {
-		t.Error("expected && to only source on successful command execution")
+	// Verify unconditional sourcing after execution (not using && to conditionalize)
+	if strings.Contains(contentStr, "&& source") {
+		t.Error("expected unconditional sourcing, but found conditional '&& source'")
 	}
 }
 
