@@ -118,13 +118,13 @@ func (m *Manager) parseShellScript(content string) ([]domain.Bookmark, error) {
 			currentBookmark = &domain.Bookmark{}
 
 			// Parse metadata: # BM: alias|path|desc|created|updated|tmux|execute|postscript|file
-			parts := strings.Split(strings.TrimPrefix(line, "# BM: "), "|")
+			parts := splitMetadata(strings.TrimPrefix(line, "# BM: "))
 			if len(parts) >= 2 {
-				currentBookmark.Alias = parts[0]
-				currentBookmark.Path = parts[1]
+				currentBookmark.Alias = unescapeMetadataField(parts[0])
+				currentBookmark.Path = unescapeMetadataField(parts[1])
 			}
 			if len(parts) >= 3 {
-				currentBookmark.Description = parts[2]
+				currentBookmark.Description = unescapeMetadataField(parts[2])
 			}
 			if len(parts) >= 4 && parts[3] != "" {
 				currentBookmark.CreatedAt, _ = time.Parse(time.RFC3339, parts[3])
@@ -133,16 +133,16 @@ func (m *Manager) parseShellScript(content string) ([]domain.Bookmark, error) {
 				currentBookmark.UpdatedAt, _ = time.Parse(time.RFC3339, parts[4])
 			}
 			if len(parts) >= 6 {
-				currentBookmark.TmuxWindowName = parts[5]
+				currentBookmark.TmuxWindowName = unescapeMetadataField(parts[5])
 			}
 			if len(parts) >= 7 {
-				currentBookmark.Execute = parts[6]
+				currentBookmark.Execute = unescapeMetadataField(parts[6])
 			}
 			if len(parts) >= 8 {
-				currentBookmark.PostJumpScript = parts[7]
+				currentBookmark.PostJumpScript = unescapeMetadataField(parts[7])
 			}
 			if len(parts) >= 9 {
-				currentBookmark.File = parts[8]
+				currentBookmark.File = unescapeMetadataField(parts[8])
 			}
 		}
 	}
@@ -193,15 +193,15 @@ func (m *Manager) generateShellScript(bookmarks []domain.Bookmark) error {
 	for _, bm := range bookmarks {
 		// Write metadata as comment
 		metadata := fmt.Sprintf("# BM: %s|%s|%s|%s|%s|%s|%s|%s|%s\n",
-			bm.Alias,
-			bm.Path,
-			bm.Description,
+			escapeMetadataField(bm.Alias),
+			escapeMetadataField(bm.Path),
+			escapeMetadataField(bm.Description),
 			bm.CreatedAt.Format(time.RFC3339),
 			bm.UpdatedAt.Format(time.RFC3339),
-			bm.TmuxWindowName,
-			bm.Execute,
-			bm.PostJumpScript,
-			bm.File,
+			escapeMetadataField(bm.TmuxWindowName),
+			escapeMetadataField(bm.Execute),
+			escapeMetadataField(bm.PostJumpScript),
+			escapeMetadataField(bm.File),
 		)
 		script.WriteString(metadata)
 
@@ -300,11 +300,11 @@ func (m *Manager) BuildNavigationCommand(bm domain.Bookmark) string {
 	if m.navTool != "" && m.navTool != "none" {
 		navCmd = m.navTool
 	}
-	parts = append(parts, fmt.Sprintf("%s '%s'", navCmd, bm.Path))
+	parts = append(parts, fmt.Sprintf("%s %s", navCmd, escapeShellArg(bm.Path, m.shell)))
 
 	// 2. Tmux window rename (after navigation)
 	if bm.TmuxWindowName != "" {
-		parts = append(parts, fmt.Sprintf("tmux rename-window '%s'", bm.TmuxWindowName))
+		parts = append(parts, fmt.Sprintf("tmux rename-window %s", escapeShellArg(bm.TmuxWindowName, m.shell)))
 	}
 
 	// 3. Execute command
@@ -319,7 +319,7 @@ func (m *Manager) BuildNavigationCommand(bm domain.Bookmark) string {
 
 	// 5. Open file in editor (always last)
 	if bm.File != "" && m.editor != "" {
-		parts = append(parts, fmt.Sprintf("%s '%s'", m.editor, bm.File))
+		parts = append(parts, fmt.Sprintf("%s %s", m.editor, escapeShellArg(bm.File, m.shell)))
 	}
 
 	joinWord := " && "
@@ -505,8 +505,8 @@ func (m *Manager) FindBookmarkLine(alias string) (int, error) {
 
 		// Look for the bookmark metadata comment first
 		if strings.HasPrefix(line, "# BM:") {
-			parts := strings.Split(strings.TrimPrefix(line, "# BM: "), "|")
-			if len(parts) > 0 && parts[0] == alias {
+			parts := splitMetadata(strings.TrimPrefix(line, "# BM: "))
+			if len(parts) > 0 && unescapeMetadataField(parts[0]) == alias {
 				foundMetadata = true
 				continue
 			}
@@ -528,4 +528,72 @@ func (m *Manager) FindBookmarkLine(alias string) (int, error) {
 	}
 
 	return 0, ErrBookmarkNotFound
+}
+
+func escapeShellArg(arg string, shellType string) string {
+	switch shellType {
+	case "fish":
+		escaped := strings.ReplaceAll(arg, "'", "\\'")
+		return fmt.Sprintf("'%s'", escaped)
+	case "nu", "nushell":
+		escaped := strings.ReplaceAll(arg, "'", "''")
+		return fmt.Sprintf("'%s'", escaped)
+	default: // bash, zsh, sh
+		escaped := strings.ReplaceAll(arg, "'", "'\\''")
+		return fmt.Sprintf("'%s'", escaped)
+	}
+}
+
+func escapeMetadataField(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	return s
+}
+
+func unescapeMetadataField(s string) string {
+	var result strings.Builder
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\\' && i+1 < len(runes) {
+			switch runes[i+1] {
+			case '\\':
+				result.WriteRune('\\')
+			case '|':
+				result.WriteRune('|')
+			case 'n':
+				result.WriteRune('\n')
+			case 'r':
+				result.WriteRune('\r')
+			default:
+				result.WriteRune('\\')
+				result.WriteRune(runes[i+1])
+			}
+			i++
+		} else {
+			result.WriteRune(runes[i])
+		}
+	}
+	return result.String()
+}
+
+func splitMetadata(s string) []string {
+	var parts []string
+	var current strings.Builder
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\\' && i+1 < len(runes) && runes[i+1] == '|' {
+			current.WriteRune('\\')
+			current.WriteRune('|')
+			i++
+		} else if runes[i] == '|' {
+			parts = append(parts, current.String())
+			current.Reset()
+		} else {
+			current.WriteRune(runes[i])
+		}
+	}
+	parts = append(parts, current.String())
+	return parts
 }
