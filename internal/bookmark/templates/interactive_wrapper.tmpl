@@ -1,22 +1,22 @@
 # Interactive bookmark navigation function
-{{if .IsMainFunctionEnabled}}
+{{if .IsMainFunctionEnabled -}}
 # Delegates to consolidated {{.TargetFunction}} function
-{{if eq .Shell "fish"}}
+{{if eq .Shell "fish" -}}
 function {{.FunctionName}}
 	{{.TargetFunction}} $argv
 end
-{{else if or (eq .Shell "nu") (eq .Shell "nushell")}}
+{{else if or (eq .Shell "nu") (eq .Shell "nushell") -}}
 def --wrapped {{.FunctionName}} [...args] {
 	{{.TargetFunction}} ...$args
 }
-{{else}}
+{{else -}}
 {{.FunctionName}}() {
 	{{.TargetFunction}} "$@"
 }
-{{end}}
-{{else}}
+{{end -}}
+{{else -}}
 # Displays the TUI and executes the selected bookmark command
-{{if eq .Shell "fish"}}
+{{if eq .Shell "fish" -}}
 function {{.FunctionName}}
 	set -x CLICOLOR_FORCE 1
 	set cmd (command bookmark -i)
@@ -25,7 +25,7 @@ function {{.FunctionName}}
 	end
 	source {{.FilePath}}
 end
-{{else if or (eq .Shell "nu") (eq .Shell "nushell")}}
+{{else if or (eq .Shell "nu") (eq .Shell "nushell") -}}
 # Note: Nushell interactive wrapper
 def {{.FunctionName}} [] {
 	with-env {CLICOLOR_FORCE: "1"} {
@@ -44,7 +44,7 @@ def {{.FunctionName}} [] {
 		}
 	}
 }
-{{else}}
+{{else -}}
 {{.FunctionName}}() {
 	local cmd=$(CLICOLOR_FORCE=1 command bookmark -i)
 	if [[ -n "$cmd" ]]; then
@@ -52,5 +52,5 @@ def {{.FunctionName}} [] {
 	fi
 	source {{.FilePath}}
 }
-{{end}}
-{{end}}
+{{end -}}
+{{end -}}
