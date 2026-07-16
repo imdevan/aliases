@@ -6,6 +6,7 @@ An alias manager for your favorite shell
 
 - An alias manager that works WITH your shell
 - Integrates with your favorite shell!
+
 ## Install
 
 ```bash
@@ -13,7 +14,7 @@ An alias manager for your favorite shell
 homebrew install imdevan/aliases/aliases
 
 # With AUR
-yay -S aliasesaa
+yay -S aliases
 
 # Manual
 git clone https://github.com/imdevan/aliases.git
@@ -21,39 +22,29 @@ cd aliases
 just build && sudo just install
 ```
 
-See [install](https://devan.gg/aliases/install/)  docs for more information.
+See [install](https://devan.gg/aliases/install/) docs for more information.
 
-
-## aliases your favorite folder
+## Creating an alias
 
 ```bash
+# Create an alias that cds to current directory
 ~/Projects/favorite-project
-aliases
-"aliases fp created!"
+aliases fp
 
-# Pass a name
-aliases foo
-"aliases foo created!"
+# Add alias with name, value, description
+aliases add sayhello "echo hello" "say hello description"
 
-# Rename tmux window on navigation
-aliases -t
-
-#  Rename tmux custom window
-aliases -T foo
+# Interactive list of aliases
+al
 ```
-
 
 ## How `aliases` works
 
-A **aliases** in this case is an alias that is sourced into the shell on load time. 
+An **alias** in this case is an alias that is sourced into the shell on load time. 
 
-Aliases live in `~/.aliasess/aliasess.sh` by default. The location can be changed via config options. 
+Aliases live in `~/.aliases/aliases.zsh` by default (or `.sh` / `.fish` / `.nu` depending on shell). The location can be changed via config options. 
 
-aliases is essentially a light weight wrapper around that file. 
-
-### Escaping and Quoting
-
-When aliasess are saved, the tool automatically escapes and quotes all fields (such as directory paths, descriptions, tmux window names, and associated files or scripts) to ensure they are written and parsed correctly regardless of special characters like single/double quotes, pipes (`|`), or newlines. The escaping behavior is adapted automatically to your configured shell (POSIX, Fish, or Nushell). 
+aliases is essentially a lightweight wrapper around that file. 
 
 ## Using different shell? 
 
@@ -63,11 +54,13 @@ See configuration options for more info.
 
 ## Commands
 
-
 ```bash
-aliases                 # aliases a file
-bm                       # Interactive aliases list
-aliases add             # Interactive form to add a new aliases
+aliases                 # Without args: opens TUI list. With name: creates a cd alias for cwd
+al                      # Interactive aliases list
+aliases add             # Interactive form to add a new alias, or aliases add [name] [value] [description]
+aliases delete          # Delete an alias
+aliases edit            # Edit an alias or open aliases file in editor
+aliases import          # Import aliases from a file or folder
 aliases config          # View or edit configuration
 aliases config init     # Generate default config file
 aliases completion      # Generate shell completion scripts
@@ -88,35 +81,3 @@ See [configuration](./CONFIGURATION.md) for installation options.
 ## Installation
 
 See [install](./INSTALL.md) for installation options.
-
-## Customization
-
-This template is designed to be customized for your specific CLI tool needs:
-1. Edit `package.toml` with your project details (name, module, description, etc.)
-
-2. Run `just sync` to sync changes across all files
-3. Review changes with `git diff`
-4. Build and test: `just build && just test`
-
-The `package.toml` file is the single source of truth for project metadata. The sync script will update:
-- Go module name in `go.mod` and all import paths
-- Binary name in justfile and build scripts
-- Config paths in `internal/utils/paths.go`
-- Completion examples
-- README description
-- Version in root.go
-
-## Architecture
-
-- `cmd/`              - CLI entrypoint and commands
-- `internal/config`   - Configuration management
-- `internal/domain`   - Domain models
-- `internal/ui`       - Bubble Tea UI components
-- `internal/utils`    - Utility functions
-- `internal/adapters` - External service adapters (editor, clipboard)
-
-# Thank you!
-
-This project was made by deconstructing a another cli project of mine [Prompter](http://devan.gg/prompter-cli/). Check it out if you like fiddling with coding agents and want a more vim centric way of managing your prompting!
-
-
