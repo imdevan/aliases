@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	shelladapter "bookmark/internal/adapters/shell"
+	shelladapter "github.com/aliases/internal/adapters/shell"
 )
 
 // Config describes the resolved configuration.

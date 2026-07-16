@@ -1,4 +1,4 @@
-module bookmark
+module github.com/aliases
 
 go 1.26
 

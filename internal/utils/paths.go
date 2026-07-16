@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"bookmark/internal/package"
+	"github.com/aliases/internal/package"
 )
 
 // XDGConfigHome returns the config home directory with sensible defaults.

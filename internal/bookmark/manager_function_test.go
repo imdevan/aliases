@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"bookmark/internal/domain"
+	"github.com/aliases/internal/domain"
 )
 
 func TestManager_FunctionWrapperGeneration(t *testing.T) {

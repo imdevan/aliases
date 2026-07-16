@@ -11,8 +11,8 @@ import (
 	"text/template"
 	"time"
 
-	"bookmark/internal/adapters/shell"
-	"bookmark/internal/domain"
+	"github.com/aliases/internal/adapters/shell"
+	"github.com/aliases/internal/domain"
 )
 
 var (

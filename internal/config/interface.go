@@ -1,6 +1,6 @@
 package config
 
-import "bookmark/internal/domain"
+import "github.com/aliases/internal/domain"
 
 // Manager describes configuration persistence behavior.
 type Manager interface {

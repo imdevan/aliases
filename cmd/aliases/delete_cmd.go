@@ -7,10 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"bookmark/internal/bookmark"
-	"bookmark/internal/config"
-	"bookmark/internal/flags"
-	"bookmark/internal/ui"
+	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/config"
+	"github.com/aliases/internal/flags"
+	"github.com/aliases/internal/ui"
 )
 
 // @docs-command:

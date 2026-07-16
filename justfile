@@ -2,7 +2,7 @@
 # ================================================================================
 set shell := ["zsh", "-cu"]
 
-PACKAGE := "bookmark"
+PACKAGE := "aliases"
 PACKAGE_BIN := "./bin/" + PACKAGE
 PACKAGE_CMD := "./cmd/" + PACKAGE
 
@@ -138,4 +138,4 @@ publish-aur version="": build
 publish version="": build
 	{{cli_pack}} publish all {{version}}
 
-
+deploy version="": (release version) (update version) (publish version)

@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"bookmark/internal/bookmark"
-	"bookmark/internal/config"
-	"bookmark/internal/flags"
+	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/config"
+	"github.com/aliases/internal/flags"
 )
 
 /*

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"bookmark/internal/domain"
-	"bookmark/internal/utils"
+	"github.com/aliases/internal/domain"
+	"github.com/aliases/internal/utils"
 )
 
 func TestManagerLoadsDefaults(t *testing.T) {

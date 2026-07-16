@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"bookmark/internal/bookmark"
-	"bookmark/internal/testutil"
+	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/testutil"
 )
 
 // TestIntegration_BookmarkCurrentDirectory tests task 1.1: bookmark current folder

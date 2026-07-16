@@ -11,7 +11,7 @@ import (
 newCompletionCmd creates the completion command for generating shell completion scripts.
 
 The completion command generates shell completion scripts for various shells.
-This enables tab-completion for bookmark commands and aliases.
+This enables tab-completion for aliases commands and aliases.
 
 Supported shells:
   - bash
@@ -22,16 +22,16 @@ Supported shells:
 Examples:
 
 	# Generate bash completion
-	bookmark completion bash > /etc/bash_completion.d/bookmark
+	aliases completion bash > /etc/bash_completion.d/aliases
 
 	# Generate zsh completion
-	bookmark completion zsh > ~/.zsh/completion/_bookmark
+	aliases completion zsh > ~/.zsh/completion/_aliases
 
 	# Generate fish completion
-	bookmark completion fish > ~/.config/fish/completions/bookmark.fish
+	aliases completion fish > ~/.config/fish/completions/aliases.fish
 
 	# Generate powershell completion
-	bookmark completion powershell > bookmark.ps1
+	aliases completion powershell > aliases.ps1
 */
 func newCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -68,9 +68,9 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 func completionHelp() string {
 	return strings.Join([]string{
 		"Examples:",
-		"  bookmark completion bash > /etc/bash_completion.d/bookmark",
-		"  bookmark completion zsh > ~/.zsh/completion/_bookmark",
-		"  bookmark completion fish > ~/.config/fish/completions/bookmark.fish",
-		"  bookmark completion powershell > bookmark.ps1",
+		"  aliases completion bash > /etc/bash_completion.d/aliases",
+		"  aliases completion zsh > ~/.zsh/completion/_aliases",
+		"  aliases completion fish > ~/.config/fish/completions/aliases.fish",
+		"  aliases completion powershell > aliases.ps1",
 	}, "\n")
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"bookmark/internal/domain"
+	"github.com/aliases/internal/domain"
 )
 
 func TestNushellAliasFormat(t *testing.T) {

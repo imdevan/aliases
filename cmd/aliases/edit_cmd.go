@@ -7,12 +7,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"bookmark/internal/adapters/tty"
-	"bookmark/internal/bookmark"
-	"bookmark/internal/config"
-	"bookmark/internal/domain"
-	"bookmark/internal/flags"
-	"bookmark/internal/ui"
+	"github.com/aliases/internal/adapters/tty"
+	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/config"
+	"github.com/aliases/internal/domain"
+	"github.com/aliases/internal/flags"
+	"github.com/aliases/internal/ui"
 )
 
 type editOptions struct {
