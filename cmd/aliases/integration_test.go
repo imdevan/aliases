@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aliases/internal/alias"
+	"github.com/aliases/internal/domain"
 	"github.com/aliases/internal/testutil"
 )
 
@@ -119,3 +120,76 @@ func TestIntegration_DeleteAlias(t *testing.T) {
 		t.Errorf("expected 0 aliases, got %d", len(aliases))
 	}
 }
+
+func TestIntegration_Import(t *testing.T) {
+	env := testutil.SetupTestEnv(t)
+
+	// Add an existing alias to the default file first
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"add", "foo", "echo existing", "existing desc", "-c", env.ConfigPath, "-y"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("failed to add initial alias: %v", err)
+	}
+
+	// Create a temporary directory and files to import
+	importDir := filepath.Join(env.TempDir, "import_src")
+	if err := os.MkdirAll(importDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	importFile1 := filepath.Join(importDir, "aliases1.sh")
+	content1 := "alias foo='echo overridden' # new desc\nalias bar='echo bar'\n"
+	if err := os.WriteFile(importFile1, []byte(content1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	importFile2 := filepath.Join(importDir, "aliases2.sh")
+	content2 := "alias baz='echo baz' # baz desc\n"
+	if err := os.WriteFile(importFile2, []byte(content2), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run import on the directory
+	cmd2 := newRootCmd()
+	cmd2.SetArgs([]string{"import", importDir, "-c", env.ConfigPath})
+	if err := cmd2.Execute(); err != nil {
+		t.Fatalf("failed to import folder: %v", err)
+	}
+
+	cfg := testutil.LoadTestConfig(t, env.ConfigPath)
+	mgr := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
+
+	aliases, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("failed to load aliases: %v", err)
+	}
+
+	// Map them for easy checking
+	aliasMap := make(map[string]domain.Alias)
+	for _, al := range aliases {
+		aliasMap[al.Name] = al
+	}
+
+	// Check if all three exist
+	if len(aliases) != 3 {
+		t.Fatalf("expected 3 aliases after import, got %d", len(aliases))
+	}
+
+	// 'foo' should be overridden by the last one (imported file)
+	fooAl, exists := aliasMap["foo"]
+	if !exists {
+		t.Fatal("expected 'foo' to exist")
+	}
+	if fooAl.Value != "echo overridden" || fooAl.Description != "new desc" {
+		t.Errorf("foo alias not correctly overridden: %+v", fooAl)
+	}
+
+	// 'bar' and 'baz' should exist
+	if _, exists := aliasMap["bar"]; !exists {
+		t.Error("expected 'bar' to exist")
+	}
+	if _, exists := aliasMap["baz"]; !exists {
+		t.Error("expected 'baz' to exist")
+	}
+}
+
