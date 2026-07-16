@@ -1,0 +1,56 @@
+# Interactive bookmark navigation function
+{{if .IsMainFunctionEnabled}}
+# Delegates to consolidated {{.TargetFunction}} function
+{{if eq .Shell "fish"}}
+function {{.FunctionName}}
+	{{.TargetFunction}} $argv
+end
+{{else if or (eq .Shell "nu") (eq .Shell "nushell")}}
+def --wrapped {{.FunctionName}} [...args] {
+	{{.TargetFunction}} ...$args
+}
+{{else}}
+{{.FunctionName}}() {
+	{{.TargetFunction}} "$@"
+}
+{{end}}
+{{else}}
+# Displays the TUI and executes the selected bookmark command
+{{if eq .Shell "fish"}}
+function {{.FunctionName}}
+	set -x CLICOLOR_FORCE 1
+	set cmd (command bookmark -i)
+	if test -n "$cmd"
+		eval $cmd
+	end
+	source {{.FilePath}}
+end
+{{else if or (eq .Shell "nu") (eq .Shell "nushell")}}
+# Note: Nushell interactive wrapper
+def {{.FunctionName}} [] {
+	with-env {CLICOLOR_FORCE: "1"} {
+		let cmd = (^bookmark -i)
+		if ($cmd | is-not-empty) {
+			let parts = ($cmd | split row ';')
+			for part in $parts {
+				let trimmed = ($part | str trim)
+				if ($trimmed | str starts-with "cd ") {
+					let path = ($trimmed | str replace "cd " "" | str trim | str replace -r "^['\"]" "" | str replace -r "['\"]$" "")
+					cd $path
+				} else {
+					nu -c $trimmed
+				}
+			}
+		}
+	}
+}
+{{else}}
+{{.FunctionName}}() {
+	local cmd=$(CLICOLOR_FORCE=1 command bookmark -i)
+	if [[ -n "$cmd" ]]; then
+		eval "$cmd"
+	fi
+	source {{.FilePath}}
+}
+{{end}}
+{{end}}

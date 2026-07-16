@@ -1,0 +1,50 @@
+# Function wrapper to auto-source bookmarks after running bookmark commands
+# This ensures new/updated bookmarks are immediately available in your shell
+{{if eq .Shell "fish"}}
+function {{.FunctionName}}
+	if test (count $argv) -eq 0
+		set -x CLICOLOR_FORCE 1
+		set cmd (command bookmark -i)
+		if test -n "$cmd"
+			eval $cmd
+		end
+	else
+		command bookmark $argv
+	end
+	source {{.FilePath}}
+end
+{{else if or (eq .Shell "nu") (eq .Shell "nushell")}}
+def --wrapped {{.FunctionName}} [...args] {
+	if ($args | is-empty) {
+		with-env {CLICOLOR_FORCE: "1"} {
+			let cmd = (^bookmark -i)
+			if ($cmd | is-not-empty) {
+				let parts = ($cmd | split row ';')
+				for part in $parts {
+					let trimmed = ($part | str trim)
+					if ($trimmed | str starts-with "cd ") {
+						let path = ($trimmed | str replace "cd " "" | str trim | str replace -r "^['\"]" "" | str replace -r "['\"]$" "")
+						cd $path
+					} else {
+						nu -c $trimmed
+					}
+				}
+			}
+		}
+	} else {
+		^bookmark ...$args
+	}
+}
+{{else}}
+{{.FunctionName}}() {
+	if [ $# -eq 0 ]; then
+		local cmd=$(CLICOLOR_FORCE=1 command bookmark -i)
+		if [[ -n "$cmd" ]]; then
+			eval "$cmd"
+		fi
+	else
+		command bookmark "$@"
+	fi
+	source {{.FilePath}}
+}
+{{end}}

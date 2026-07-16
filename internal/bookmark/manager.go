@@ -2,11 +2,13 @@ package bookmark
 
 import (
 	"bufio"
+	_ "embed"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"bookmark/internal/adapters/shell"
@@ -214,143 +216,66 @@ func (m *Manager) generateShellScript(bookmarks []domain.Bookmark) error {
 	return os.WriteFile(m.filePath, []byte(script.String()), 0o644)
 }
 
+//go:embed templates/function_wrapper.tmpl
+var functionWrapperTemplate string
+
+//go:embed templates/interactive_wrapper.tmpl
+var interactiveWrapperTemplate string
+
 // generateFunctionWrapper creates a shell function that wraps the bookmark command
 // and auto-sources the bookmarks file after execution.
 func (m *Manager) generateFunctionWrapper(functionName string) string {
-	var wrapper strings.Builder
-
-	wrapper.WriteString("# Function wrapper to auto-source bookmarks after running bookmark commands\n")
-	wrapper.WriteString("# This ensures new/updated bookmarks are immediately available in your shell\n")
-
-	switch m.shell {
-	case "fish":
-		wrapper.WriteString(fmt.Sprintf("function %s\n", functionName))
-		wrapper.WriteString("\tif test (count $argv) -eq 0\n")
-		wrapper.WriteString("\t\tset -x CLICOLOR_FORCE 1\n")
-		wrapper.WriteString("\t\tset cmd (command bookmark -i)\n")
-		wrapper.WriteString("\t\tif test -n \"$cmd\"\n")
-		wrapper.WriteString("\t\t\teval $cmd\n")
-		wrapper.WriteString("\t\tend\n")
-		wrapper.WriteString("\telse\n")
-		wrapper.WriteString("\t\tcommand bookmark $argv\n")
-		wrapper.WriteString("\tend\n")
-		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
-		wrapper.WriteString("end\n")
-	case "nu", "nushell":
-		wrapper.WriteString(fmt.Sprintf("def --wrapped %s [...args] {\n", functionName))
-		wrapper.WriteString("\tif ($args | is-empty) {\n")
-		wrapper.WriteString("\t\twith-env {CLICOLOR_FORCE: \"1\"} {\n")
-		wrapper.WriteString("\t\t\tlet cmd = (^bookmark -i)\n")
-		wrapper.WriteString("\t\t\tif ($cmd | is-not-empty) {\n")
-		wrapper.WriteString("\t\t\t\tlet parts = ($cmd | split row ';')\n")
-		wrapper.WriteString("\t\t\t\tfor part in $parts {\n")
-		wrapper.WriteString("\t\t\t\t\tlet trimmed = ($part | str trim)\n")
-		wrapper.WriteString("\t\t\t\t\tif ($trimmed | str starts-with \"cd \") {\n")
-		wrapper.WriteString("\t\t\t\t\t\tlet path = ($trimmed | str replace \"cd \" \"\" | str trim | str replace -r \"^['\\\"]\" \"\" | str replace -r \"['\\\"]$\" \"\")\n")
-		wrapper.WriteString("\t\t\t\t\t\tcd $path\n")
-		wrapper.WriteString("\t\t\t\t\t} else {\n")
-		wrapper.WriteString("\t\t\t\t\t\tnu -c $trimmed\n")
-		wrapper.WriteString("\t\t\t\t\t}\n")
-		wrapper.WriteString("\t\t\t\t}\n")
-		wrapper.WriteString("\t\t\t}\n")
-		wrapper.WriteString("\t\t}\n")
-		wrapper.WriteString("\t} else {\n")
-		wrapper.WriteString("\t\t^bookmark ...$args\n")
-		wrapper.WriteString("\t}\n")
-		wrapper.WriteString("}\n")
-	default: // bash, zsh, sh
-		wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
-		wrapper.WriteString("\tif [ $# -eq 0 ]; then\n")
-		wrapper.WriteString("\t\tlocal cmd=$(CLICOLOR_FORCE=1 command bookmark -i)\n")
-		wrapper.WriteString("\t\tif [[ -n \"$cmd\" ]]; then\n")
-		wrapper.WriteString("\t\t\teval \"$cmd\"\n")
-		wrapper.WriteString("\t\tfi\n")
-		wrapper.WriteString("\telse\n")
-		wrapper.WriteString("\t\tcommand bookmark \"$@\"\n")
-		wrapper.WriteString("\tfi\n")
-		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
-		wrapper.WriteString("}\n")
+	tmpl, err := template.New("function_wrapper").Parse(functionWrapperTemplate)
+	if err != nil {
+		panic(err)
 	}
-
-	return wrapper.String()
+	var builder strings.Builder
+	data := struct {
+		Shell        string
+		FunctionName string
+		FilePath     string
+	}{
+		Shell:        m.shell,
+		FunctionName: functionName,
+		FilePath:     m.filePath,
+	}
+	if err := tmpl.Execute(&builder, data); err != nil {
+		panic(err)
+	}
+	return builder.String()
 }
 
 // generateInteractiveWrapper creates a shell function for interactive bookmark navigation.
 // This function runs 'bookmark -i' and executes the selected bookmark command.
 func (m *Manager) generateInteractiveWrapper(functionName string) string {
-	// If main function wrapper is enabled, we can just delegate to it!
-	if m.functionAlias != "" && m.functionAlias != "false" {
-		targetFunction := "bookmark"
-		if m.functionAlias != "true" {
-			targetFunction = m.functionAlias
-		}
+	tmpl, err := template.New("interactive_wrapper").Parse(interactiveWrapperTemplate)
+	if err != nil {
+		panic(err)
+	}
+	var builder strings.Builder
 
-		var wrapper strings.Builder
-		wrapper.WriteString("# Interactive bookmark navigation function\n")
-		wrapper.WriteString(fmt.Sprintf("# Delegates to consolidated %s function\n", targetFunction))
-
-		switch m.shell {
-		case "fish":
-			wrapper.WriteString(fmt.Sprintf("function %s\n", functionName))
-			wrapper.WriteString(fmt.Sprintf("\t%s $argv\n", targetFunction))
-			wrapper.WriteString("end\n")
-		case "nu", "nushell":
-			wrapper.WriteString(fmt.Sprintf("def --wrapped %s [...args] {\n", functionName))
-			wrapper.WriteString(fmt.Sprintf("\t%s ...$args\n", targetFunction))
-			wrapper.WriteString("}\n")
-		default: // bash, zsh, sh
-			wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
-			wrapper.WriteString(fmt.Sprintf("\t%s \"$@\"\n", targetFunction))
-			wrapper.WriteString("}\n")
-		}
-		return wrapper.String()
+	targetFunction := "bookmark"
+	if m.functionAlias != "" && m.functionAlias != "false" && m.functionAlias != "true" {
+		targetFunction = m.functionAlias
 	}
 
-	// Fallback to standalone interactive wrapper if main function is disabled:
-	var wrapper strings.Builder
-	wrapper.WriteString("# Interactive bookmark navigation function\n")
-	wrapper.WriteString("# Displays the TUI and executes the selected bookmark command\n")
-
-	switch m.shell {
-	case "fish":
-		wrapper.WriteString(fmt.Sprintf("function %s\n", functionName))
-		wrapper.WriteString("\tset -x CLICOLOR_FORCE 1\n")
-		wrapper.WriteString("\tset cmd (command bookmark -i)\n")
-		wrapper.WriteString("\tif test -n \"$cmd\"\n")
-		wrapper.WriteString("\t\teval $cmd\n")
-		wrapper.WriteString("\tend\n")
-		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
-		wrapper.WriteString("end\n")
-	case "nu", "nushell":
-		wrapper.WriteString(fmt.Sprintf("# Note: Nushell interactive wrapper\n"))
-		wrapper.WriteString(fmt.Sprintf("def %s [] {\n", functionName))
-		wrapper.WriteString("\twith-env {CLICOLOR_FORCE: \"1\"} {\n")
-		wrapper.WriteString("\t\tlet cmd = (^bookmark -i)\n")
-		wrapper.WriteString("\t\tif ($cmd | is-not-empty) {\n")
-		wrapper.WriteString("\t\t\tlet parts = ($cmd | split row ';')\n")
-		wrapper.WriteString("\t\t\tfor part in $parts {\n")
-		wrapper.WriteString("\t\t\t\tlet trimmed = ($part | str trim)\n")
-		wrapper.WriteString("\t\t\t\tif ($trimmed | str starts-with \"cd \") {\n")
-		wrapper.WriteString("\t\t\t\t\tlet path = ($trimmed | str replace \"cd \" \"\" | str trim | str replace -r \"^['\\\"]\" \"\" | str replace -r \"['\\\"]$\" \"\")\n")
-		wrapper.WriteString("\t\t\t\t\tcd $path\n")
-		wrapper.WriteString("\t\t\t\t} else {\n")
-		wrapper.WriteString("\t\t\t\t\tnu -c $trimmed\n")
-		wrapper.WriteString("\t\t\t\t}\n")
-		wrapper.WriteString("\t\t\t}\n")
-		wrapper.WriteString("\t\t}\n")
-		wrapper.WriteString("\t}\n")
-		wrapper.WriteString("}\n")
-	default: // bash, zsh, sh
-		wrapper.WriteString(fmt.Sprintf("%s() {\n", functionName))
-		wrapper.WriteString("\tlocal cmd=$(CLICOLOR_FORCE=1 command bookmark -i)\n")
-		wrapper.WriteString("\tif [[ -n \"$cmd\" ]]; then\n")
-		wrapper.WriteString("\t\teval \"$cmd\"\n")
-		wrapper.WriteString("\tfi\n")
-		wrapper.WriteString(fmt.Sprintf("\tsource %s\n", m.filePath))
-		wrapper.WriteString("}\n")
+	data := struct {
+		Shell                 string
+		FunctionName          string
+		TargetFunction        string
+		IsMainFunctionEnabled bool
+		FilePath              string
+	}{
+		Shell:                 m.shell,
+		FunctionName:          functionName,
+		TargetFunction:        targetFunction,
+		IsMainFunctionEnabled: m.functionAlias != "" && m.functionAlias != "false",
+		FilePath:              m.filePath,
 	}
-
-	return wrapper.String()
+	if err := tmpl.Execute(&builder, data); err != nil {
+		panic(err)
+	}
+	return builder.String()
 }
 
 // BuildNavigationCommand constructs the full command for a bookmark.
