@@ -37,9 +37,8 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 	configPath := filepath.Join(configDir, "config.toml")
 
 	cfg := domain.Config{
-		BookmarkLocation:   bookmarkDir,
+		AliasFile:          filepath.Join(bookmarkDir, "aliases.sh"),
 		Shell:              "bash",
-		NavigationTool:     "cd",
 		Editor:             "vim",
 		AutoAliasLowercase: true,
 		AutoAliasSeparator: "",

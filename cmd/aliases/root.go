@@ -15,7 +15,7 @@ import (
 	"github.com/aliases/internal/adapters/editor"
 	"github.com/aliases/internal/adapters/icon"
 	"github.com/aliases/internal/adapters/tty"
-	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
 	"github.com/aliases/internal/flags"
@@ -35,13 +35,7 @@ type rootOptions struct {
 	showVersion bool
 	interactive bool
 	add         bool
-	tmux        bool
-	tmuxName    string
-	description string
 	yes         bool
-	file        string
-	execute     string
-	source      string
 }
 
 var rootCmd = newRootCmd()
@@ -51,27 +45,10 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-// @docs-command:root
-//
-//		name: bookmark
-//		description:
-//			The root command serves multiple purposes:
-//	  		- Without arguments: Opens interactive bookmark browser (if configured)
-//	  		- With alias argument: Navigates to the bookmarked directory
-//		example:
-//			```bash
-//			~/foo
-//			$ bookmark			# create alias "f" that points to ~/foo
-//
-//			~/foo
-//			$ bookmark bar	# create alias "bar" that points to ~/foo
-//			```
-//		note:
-//			On first call `~/.bookmark/bookmarks.sh` and `~/.config/bookmark/config.toml` will be created.
 func newRootCmd() *cobra.Command {
 	opts := &rootOptions{}
 	cmd := &cobra.Command{
-		Use:   name + " [alias]",
+		Use:   name + " [name]",
 		Short: short,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -89,15 +66,7 @@ func newRootCmd() *cobra.Command {
 			cfg := config.Load(cwd, opts.configPath)
 
 			// Interactive mode: if explicit -i flag, or if no args/commands are provided
-			isNoArgsOrCommands := len(args) == 0 &&
-				!opts.add &&
-				!opts.tmux &&
-				opts.tmuxName == "" &&
-				opts.description == "" &&
-				opts.file == "" &&
-				opts.execute == "" &&
-				opts.source == "" &&
-				!opts.yes
+			isNoArgsOrCommands := len(args) == 0 && !opts.add && !opts.yes
 
 			if opts.interactive || isNoArgsOrCommands {
 				return runInteractive(cmd, opts, cfg)
@@ -108,64 +77,17 @@ func newRootCmd() *cobra.Command {
 				return runAddForm(cmd, opts, cfg, cwd)
 			}
 
-			// Add bookmark mode
-			return runAddBookmark(cmd, args, opts, cfg, cwd)
+			// Add alias mode
+			return runAddAlias(cmd, args, opts, cfg, cwd)
 		},
 	}
 
-	// @docs-flag-group:
-	//
-	// 	name: bookmark
-	// 	description:
-	// 		Options related to adding a bookmark.
-	// 	example:
-	//		```bash
-	//		~/foo
-	//		$ bookmark foo -t -x "just start-dev" -f "./example.md" -d "an example bookmark"
-	//		```
-	//
-	//		Creates a shell alias `foo` that:
-	//		- navigates to `~/foo`
-	//		- renames the current tmux window to `foo`
-	//		- run script `just start-dev`
-	//		- then opens `~/foo/example.md` in the shells default editor
-	//		- with a comment description that can be seen when looking at the bookmark list or in the generated .sh file.
-	//	flags: description, file, source, tmux, tmux-name, execute
-	flags.Set(cmd, &opts.description, "description", "d", "bookmark description")
-	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation")
-	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)")
-	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)")
-	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name")
-	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation")
-
-	// @docs-flag-group:
-	//
-	//	name: config
-	//	description:
-	//		Use a different config other than the standard `~/.config/bookmark/config.toml`"
-	//	example:
-	//		```bash
-	//		~/foo
-	//		$ bookmark -c ~/foo/local-bookmark-config.toml
-	//		```
-	// 		Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for config options
-	// 	flags: config
 	flags.SetPersistent(cmd, &opts.configPath, "config", "c", "config file path")
 
-	// @docs-flag-group:
-	//
-	// 	name: interactive
-	// 	note:
-	//		`-i` flag only prints the bookmark location. Use `bm` alias for interactive navigation.
-	//	flags: interactive, add, yes
-	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive bookmark browser")
-	flags.Set(cmd, &opts.add, "add", "a", "interactive add bookmark form")
+	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive alias browser")
+	flags.Set(cmd, &opts.add, "add", "a", "interactive add alias form")
 	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts")
 
-	// @docs-flag-group:
-	//
-	// 	name: meta
-	//	flags: version
 	flags.Set(cmd, &opts.showVersion, "version", "v", "print version information")
 
 	cmd.AddCommand(newAddCmd())
@@ -190,33 +112,30 @@ func resolvedVersion() string {
 	return ver
 }
 
-func runAddBookmark(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Config, cwd string) error {
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
+func runAddAlias(cmd *cobra.Command, args []string, opts *rootOptions, cfg domain.Config, cwd string) error {
+	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
 
-	// Use source path if provided, otherwise use current directory
-	targetPath := cwd
-	if opts.source != "" {
-		targetPath = opts.source
-	}
+	nameArg := args[0]
+	// Default value for a new alias is cd to current directory
+	defaultValue := "cd " + cwd
 
-	// Generate or use provided alias
-	alias := generateAlias(args, targetPath, cfg)
-
-	// Check if bookmark exists and handle confirmation
-	exists, err := bmManager.Exists(alias)
+	exists, err := aliasManager.Exists(nameArg)
 	if err != nil {
 		return err
 	}
 
-	if exists && !opts.yes && !confirmOverwrite(cmd, bmManager, alias, cfg) {
+	if exists && !opts.yes && !confirmOverwrite(cmd, aliasManager, nameArg, cfg) {
 		theme := ui.ThemeFromConfig(cfg)
 		cmd.Println(ui.CanceledMessage(theme, "Overwrite"))
 		return nil
 	}
 
-	// Create and save bookmark
-	bm := buildBookmark(alias, targetPath, opts)
-	if err := bmManager.Add(bm); err != nil {
+	al := domain.Alias{
+		Name:  nameArg,
+		Value: defaultValue,
+	}
+
+	if err := aliasManager.Add(al); err != nil {
 		return err
 	}
 
@@ -224,23 +143,16 @@ func runAddBookmark(cmd *cobra.Command, args []string, opts *rootOptions, cfg do
 	if exists {
 		action = "updated"
 	}
-	printSuccess(cfg, action, alias, targetPath)
+	printSuccess(cfg, action, nameArg, defaultValue)
 	return nil
 }
 
-func generateAlias(args []string, cwd string, cfg domain.Config) string {
-	if len(args) > 0 {
-		return args[0]
-	}
-	return bookmark.GenerateAlias(cwd, cfg.AutoAliasSeparator, cfg.AutoAliasLowercase, cfg.DefaultAliasPartLength)
-}
-
-func confirmOverwrite(cmd *cobra.Command, bmManager *bookmark.Manager, alias string, cfg domain.Config) bool {
-	existing, _ := bmManager.Get(alias)
+func confirmOverwrite(cmd *cobra.Command, aliasManager *alias.Manager, nameArg string, cfg domain.Config) bool {
+	existing, _ := aliasManager.Get(nameArg)
 	theme := ui.ThemeFromConfig(cfg)
 	confirmModel := ui.NewConfirmationModel(
-		"Overwrite Bookmark",
-		fmt.Sprintf("Bookmark '%s → %s' already exists. Overwrite?", alias, existing.Path),
+		"Overwrite Alias",
+		fmt.Sprintf("Alias '%s → %s' already exists. Overwrite?", nameArg, existing.Value),
 		theme,
 	)
 
@@ -256,54 +168,23 @@ func confirmOverwrite(cmd *cobra.Command, bmManager *bookmark.Manager, alias str
 	return false
 }
 
-func buildBookmark(alias, cwd string, opts *rootOptions) domain.Bookmark {
-	bm := domain.Bookmark{
-		Alias:       alias,
-		Path:        cwd,
-		Description: opts.description,
-		File:        opts.file,
-		Execute:     opts.execute,
-	}
-
-	// Handle tmux settings
-	if opts.tmux {
-		bm.TmuxWindowName = alias
-	}
-	if opts.tmuxName != "" {
-		bm.TmuxWindowName = opts.tmuxName
-	}
-
-	return bm
-}
-
-func printSuccess(cfg domain.Config, action, alias, path string) {
+func printSuccess(cfg domain.Config, action, aliasName, value string) {
 	theme := ui.ThemeFromConfig(cfg)
 	inline := action == "deleted"
 	var body string
-	if path != "" {
-		home, _ := os.UserHomeDir()
-		displayPath := path
-		switch {
-		case cfg.HomeIcon == "" || home == "":
-		case path == home:
-			displayPath = cfg.HomeIcon
-		case strings.HasPrefix(path, home+"/"):
-			displayPath = cfg.HomeIcon + strings.TrimPrefix(path, home)
-		}
-		body = fmt.Sprintf("%s → %s", alias, displayPath)
+	if value != "" {
+		body = fmt.Sprintf("%s → %s", aliasName, value)
 	} else {
-		body = alias
+		body = aliasName
 	}
 	fmt.Println(ui.SuccessMessage(theme, action, body, inline))
 }
-
 
 func openEditor(editorName, filePath string, line int) error {
 	if editorName == "" {
 		return fmt.Errorf("no editor configured")
 	}
 
-	// Use the editor adapter
 	editorAdapter := editor.New(editorName)
 	if line > 0 {
 		return editorAdapter.OpenAtLine(filePath, line)
@@ -311,13 +192,12 @@ func openEditor(editorName, filePath string, line int) error {
 	return editorAdapter.Open(filePath)
 }
 
-// TODO: this should basically just be calling newAddCmd. see: cmd/bookmark/root.go:161
 func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd string) error {
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
-	defaultAlias := bookmark.GenerateAlias(cwd, cfg.AutoAliasSeparator, cfg.AutoAliasLowercase, cfg.DefaultAliasPartLength)
+	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
+	defaultName := alias.GenerateAlias(cwd, cfg.AutoAliasSeparator, cfg.AutoAliasLowercase, cfg.DefaultAliasPartLength)
 
 	theme := ui.ThemeFromConfig(cfg)
-	m := ui.NewBookmarkFormModel(theme, defaultAlias, cwd)
+	m := ui.NewAliasFormModel(theme, defaultName, "cd "+cwd)
 
 	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
 	p := tea.NewProgram(m, progOpts...)
@@ -326,126 +206,103 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 		return err
 	}
 
-	fm, ok := result.(ui.BookmarkFormModel)
+	fm, ok := result.(ui.AliasFormModel)
 	if !ok || !fm.IsCompleted() {
 		fmt.Println(ui.CanceledMessage(theme, "Add"))
 		return nil
 	}
 
-	alias, path, desc, file, tmuxWindowName, postJumpScript := fm.Values()
-	bm := domain.Bookmark{
-		Alias:          alias,
-		Path:           path,
-		Description:    desc,
-		File:           file,
-		TmuxWindowName: tmuxWindowName,
-		PostJumpScript: postJumpScript,
+	fName, fValue, fDesc := fm.Values()
+	al := domain.Alias{
+		Name:        fName,
+		Value:       fValue,
+		Description: fDesc,
 	}
 
-	exists, err := bmManager.Exists(alias)
+	exists, err := aliasManager.Exists(fName)
 	if err != nil {
 		return err
 	}
-	if err := bmManager.Add(bm); err != nil {
+	if err := aliasManager.Add(al); err != nil {
 		return err
 	}
 	action := "created"
 	if exists {
 		action = "updated"
 	}
-	printSuccess(cfg, action, alias, path)
+	printSuccess(cfg, action, fName, fValue)
 	return nil
 }
 
 func runInteractive(cmd *cobra.Command, opts *rootOptions, cfg domain.Config) error {
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
-	bookmarks, err := bmManager.Load()
+	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
+	aliases, err := aliasManager.Load()
 	if err != nil {
 		return err
 	}
 
-	if len(bookmarks) == 0 {
-		cmd.Println("No bookmarks found. Add one with: bookmark [alias]")
+	if len(aliases) == 0 {
+		cmd.Println("No aliases found. Add one with: aliases [name]")
 		return nil
 	}
 
-	return runBookmarkListing(bookmarks, cfg, bmManager)
+	return runAliasListing(aliases, cfg, aliasManager)
 }
 
-func sortBookmarks(bookmarks []domain.Bookmark, sortBy string) {
+func sortAliases(aliases []domain.Alias, sortBy string) {
 	switch sortBy {
-	case "newest":
-		// Sort by CreatedAt descending (newest first)
-		for i := 0; i < len(bookmarks)-1; i++ {
-			for j := i + 1; j < len(bookmarks); j++ {
-				if bookmarks[i].CreatedAt.Before(bookmarks[j].CreatedAt) {
-					bookmarks[i], bookmarks[j] = bookmarks[j], bookmarks[i]
-				}
-			}
-		}
-	case "oldest", "latest":
-		// Sort by CreatedAt ascending (oldest first)
-		for i := 0; i < len(bookmarks)-1; i++ {
-			for j := i + 1; j < len(bookmarks); j++ {
-				if bookmarks[i].CreatedAt.After(bookmarks[j].CreatedAt) {
-					bookmarks[i], bookmarks[j] = bookmarks[j], bookmarks[i]
-				}
-			}
-		}
 	case "a-z", "A to Z":
-		// Sort by Alias ascending (A-Z)
-		for i := 0; i < len(bookmarks)-1; i++ {
-			for j := i + 1; j < len(bookmarks); j++ {
-				if strings.ToLower(bookmarks[i].Alias) > strings.ToLower(bookmarks[j].Alias) {
-					bookmarks[i], bookmarks[j] = bookmarks[j], bookmarks[i]
+		for i := 0; i < len(aliases)-1; i++ {
+			for j := i + 1; j < len(aliases); j++ {
+				if strings.ToLower(aliases[i].Name) > strings.ToLower(aliases[j].Name) {
+					aliases[i], aliases[j] = aliases[j], aliases[i]
 				}
 			}
 		}
 	case "z-a", "Z to A":
-		// Sort by Alias descending (Z-A)
-		for i := 0; i < len(bookmarks)-1; i++ {
-			for j := i + 1; j < len(bookmarks); j++ {
-				if strings.ToLower(bookmarks[i].Alias) < strings.ToLower(bookmarks[j].Alias) {
-					bookmarks[i], bookmarks[j] = bookmarks[j], bookmarks[i]
+		for i := 0; i < len(aliases)-1; i++ {
+			for j := i + 1; j < len(aliases); j++ {
+				if strings.ToLower(aliases[i].Name) < strings.ToLower(aliases[j].Name) {
+					aliases[i], aliases[j] = aliases[j], aliases[i]
 				}
 			}
 		}
+	default:
+		// Default is "newest" / natural order (no-op)
 	}
 }
 
-func runBookmarkListing(bookmarks []domain.Bookmark, cfg domain.Config, bmManager *bookmark.Manager) error {
-	// Sort bookmarks based on config
-	sortBookmarks(bookmarks, cfg.DefaultSortBy)
+func runAliasListing(aliases []domain.Alias, cfg domain.Config, aliasManager *alias.Manager) error {
+	sortAliases(aliases, cfg.DefaultSortBy)
 
-	items := make([]list.Item, 0, len(bookmarks))
-	for _, bm := range bookmarks {
-		items = append(items, bookmarkItem{Bookmark: bm, Config: cfg})
+	items := make([]list.Item, 0, len(aliases))
+	for _, al := range aliases {
+		items = append(items, aliasItem{Alias: al, Config: cfg})
 	}
 
 	theme := ui.ThemeFromConfig(cfg)
 	delegate := ui.NewListDelegate(theme, ui.ListDelegateOptions{
 		Spacing:        cfg.ListSpacing,
-		ShowMetadata:   true,
-		MetadataIndent: 1, // Align with path start
+		ShowMetadata:   false,
+		MetadataIndent: 1,
 	})
 
 	listModel := ui.NewListModel(items, delegate, 80, 20, theme)
-	listModel.Title = fmt.Sprintf("%s Bookmarks (%d)", icon.Bookmarks.String(), len(items))
+	listModel.Title = fmt.Sprintf("%s Aliases (%d)", icon.Bookmarks.String(), len(items))
 	listModel.SetShowStatusBar(false)
 	listModel.SetFilteringEnabled(true)
 
-	model := bookmarkListModel{
+	model := aliasListModel{
 		list:       listModel,
 		theme:      theme,
 		responsive: ui.NewResponsiveManager(80),
-		manager:    bmManager,
+		manager:    aliasManager,
 		config:     cfg,
 	}
 
 	model.list.AdditionalShortHelpKeys = model.getShortHelpKeys
 	model.list.AdditionalFullHelpKeys = model.allHelpKeys
 
-	// Get program options with TTY redirection when needed
 	opts := tty.GetProgramOptions(tea.WithoutSignalHandler())
 
 	p := tea.NewProgram(model, opts...)
@@ -456,114 +313,70 @@ func runBookmarkListing(bookmarks []domain.Bookmark, cfg domain.Config, bmManage
 	return nil
 }
 
-type bookmarkItem struct {
-	Bookmark domain.Bookmark
-	Config   domain.Config
+type aliasItem struct {
+	Alias  domain.Alias
+	Config domain.Config
 }
 
-func (b bookmarkItem) Title() string {
-	title := b.Bookmark.Alias
-
-	// Add description next to title with bullet separator in muted color
-	if b.Bookmark.Description != "" {
-		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(b.Config.Muted))
-		title += " " + mutedStyle.Render("• "+b.Bookmark.Description)
+func (a aliasItem) Title() string {
+	title := a.Alias.Name
+	if a.Alias.Description != "" {
+		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(a.Config.Muted))
+		title += " " + mutedStyle.Render("• "+a.Alias.Description)
 	}
-
 	return title
 }
 
-func (b bookmarkItem) Description() string {
-	desc := b.Bookmark.Path
-
-	// Replace home directory with home icon
-	if b.Config.HomeIcon != "" {
-		home, err := os.UserHomeDir()
-		if err == nil && strings.HasPrefix(desc, home) {
-			desc = b.Config.HomeIcon + strings.TrimPrefix(desc, home)
-		}
-	}
-
-	return desc
+func (a aliasItem) Description() string {
+	return a.Alias.Value
 }
 
-// Metadata implements ui.ItemWithMetadata interface.
-func (b bookmarkItem) Metadata() string {
-	var parts []string
-
-	// Tmux window name with icon
-	if b.Bookmark.TmuxWindowName != "" {
-		parts = append(parts, icon.Tmux.String()+" "+b.Bookmark.TmuxWindowName)
-	}
-
-	// File to open with icon
-	if b.Bookmark.File != "" {
-		editorIcon := icon.GetEditorIcon(b.Config.Editor)
-		if editorIcon != "" {
-			parts = append(parts, editorIcon.String()+" "+b.Bookmark.File)
-		} else {
-			parts = append(parts, icon.File.String()+" "+b.Bookmark.File)
-		}
-	}
-
-	// Execute command with icon
-	if b.Bookmark.Execute != "" {
-		parts = append(parts, icon.Script.String()+" "+b.Bookmark.Execute)
-	}
-	if b.Bookmark.PostJumpScript != "" {
-		parts = append(parts, icon.Script.String()+" "+b.Bookmark.PostJumpScript)
-	}
-
-	return strings.Join(parts, " • ")
+func (a aliasItem) FilterValue() string {
+	return a.Alias.Name + " " + a.Alias.Value + " " + a.Alias.Description
 }
 
-func (b bookmarkItem) FilterValue() string {
-	return b.Bookmark.Alias + " " + b.Bookmark.Path + " " + b.Bookmark.Description
-}
-
-type bookmarkListModel struct {
+type aliasListModel struct {
 	list            list.Model
 	theme           ui.Theme
 	responsive      *ui.ResponsiveManager
-	manager         *bookmark.Manager
+	manager         *alias.Manager
 	config          domain.Config
 	message         string
 	confirmMode     bool
 	confirmModel    *ui.ConfirmationModel
 	addMode         bool
-	addModel        *ui.BookmarkFormModel
+	addModel        *ui.AliasFormModel
 	editMode        bool
-	editModel       *ui.BookmarkFormModel
+	editModel       *ui.AliasFormModel
 	editingAlias    string
 	pendingAction   string
-	pendingItem     bookmarkItem
-	pendingBookmark *domain.Bookmark
+	pendingItem     aliasItem
+	pendingBookmark *domain.Alias
 	screenW         int
 	screenH         int
 }
 
-func (m *bookmarkListModel) updateTitle() {
+func (m *aliasListModel) updateTitle() {
 	visibleCount := len(m.list.VisibleItems())
 	totalCount := len(m.list.Items())
 
 	if m.list.FilterState() == list.Filtering || m.list.FilterState() == list.FilterApplied {
 		if visibleCount != totalCount {
-			m.list.Title = fmt.Sprintf("%s Bookmarks (%d/%d)", icon.Bookmarks.String(), visibleCount, totalCount)
+			m.list.Title = fmt.Sprintf("%s Aliases (%d/%d)", icon.Bookmarks.String(), visibleCount, totalCount)
 		} else {
-			m.list.Title = fmt.Sprintf("%s Bookmarks (%d)", icon.Bookmarks.String(), totalCount)
+			m.list.Title = fmt.Sprintf("%s Aliases (%d)", icon.Bookmarks.String(), totalCount)
 		}
 	} else {
-		m.list.Title = fmt.Sprintf("%s Bookmarks (%d)", icon.Bookmarks.String(), totalCount)
+		m.list.Title = fmt.Sprintf("%s Aliases (%d)", icon.Bookmarks.String(), totalCount)
 	}
 }
 
-func (m bookmarkListModel) allHelpKeys() []key.Binding {
-	// Don't show alphabetic keys when filtering to avoid interference
+func (m aliasListModel) allHelpKeys() []key.Binding {
 	if m.list.FilterState() == list.Filtering {
 		return []key.Binding{
 			key.NewBinding(
 				key.WithKeys("enter"),
-				key.WithHelp("enter", "copy cd command"),
+				key.WithHelp("enter", "run alias"),
 			),
 		}
 	}
@@ -571,19 +384,19 @@ func (m bookmarkListModel) allHelpKeys() []key.Binding {
 	return []key.Binding{
 		key.NewBinding(
 			key.WithKeys("enter"),
-			key.WithHelp("enter", "copy cd command"),
+			key.WithHelp("enter", "run alias"),
 		),
 		key.NewBinding(
 			key.WithKeys("a"),
-			key.WithHelp("a", "add bookmark"),
+			key.WithHelp("a", "add alias"),
 		),
 		key.NewBinding(
 			key.WithKeys("e"),
-			key.WithHelp("e", "edit bookmark"),
+			key.WithHelp("e", "edit alias"),
 		),
 		key.NewBinding(
 			key.WithKeys("d"),
-			key.WithHelp("d", "delete bookmark"),
+			key.WithHelp("d", "delete alias"),
 		),
 		key.NewBinding(
 			key.WithKeys("D"),
@@ -592,7 +405,7 @@ func (m bookmarkListModel) allHelpKeys() []key.Binding {
 	}
 }
 
-func (m bookmarkListModel) getShortHelpKeys() []key.Binding {
+func (m aliasListModel) getShortHelpKeys() []key.Binding {
 	allKeys := m.allHelpKeys()
 
 	var splitAt int
@@ -608,7 +421,7 @@ func (m bookmarkListModel) getShortHelpKeys() []key.Binding {
 	return allKeys[:splitAt]
 }
 
-func (m bookmarkListModel) getFullHelpKeys() []key.Binding {
+func (m aliasListModel) getFullHelpKeys() []key.Binding {
 	allKeys := m.allHelpKeys()
 
 	var splitAt int
@@ -626,11 +439,11 @@ func (m bookmarkListModel) getFullHelpKeys() []key.Binding {
 	return allKeys[splitAt:]
 }
 
-func (m bookmarkListModel) Init() tea.Cmd {
+func (m aliasListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m aliasListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.editMode && m.editModel != nil {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
@@ -641,7 +454,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetSize(width, height)
 			mw, mh := modalDimensions(msg.Width, msg.Height)
 			updatedForm, _ := m.editModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
-			if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+			if fm, ok := updatedForm.(ui.AliasFormModel); ok {
 				m.editModel = &fm
 			}
 			return m, nil
@@ -650,41 +463,38 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		var updatedModel tea.Model
 		updatedModel, cmd = m.editModel.Update(msg)
-		if updatedForm, ok := updatedModel.(ui.BookmarkFormModel); ok {
+		if updatedForm, ok := updatedModel.(ui.AliasFormModel); ok {
 			m.editModel = &updatedForm
 		}
 
 		if m.editModel.IsCompleted() {
 			m.editMode = false
-			alias, path, desc, file, tmuxWindowName, postJumpScript := m.editModel.Values()
+			nameInput, valueInput, descInput := m.editModel.Values()
 
-			// Load old bookmark to preserve CreatedAt
-			var oldBm domain.Bookmark
+			// Load old alias to preserve fields if needed
+			var oldAl domain.Alias
 			var loadErr error
-			oldBm, loadErr = m.manager.Get(m.editingAlias)
+			oldAl, loadErr = m.manager.Get(m.editingAlias)
 
-			// If the alias changed, delete the old one
-			if m.editingAlias != alias {
+			// If the name changed, delete the old one
+			if m.editingAlias != nameInput {
 				if err := m.manager.Delete(m.editingAlias); err != nil {
-					m.message = fmt.Sprintf("✗ Failed to delete old bookmark: %s", err)
+					m.message = fmt.Sprintf("✗ Failed to delete old alias: %s", err)
 					m.editModel = nil
 					return m, nil
 				}
 			}
 
-			bm := domain.Bookmark{
-				Alias:          alias,
-				Path:           path,
-				Description:    desc,
-				File:           file,
-				TmuxWindowName: tmuxWindowName,
-				PostJumpScript: postJumpScript,
+			al := domain.Alias{
+				Name:        nameInput,
+				Value:       valueInput,
+				Description: descInput,
 			}
 			if loadErr == nil {
-				bm.CreatedAt = oldBm.CreatedAt
+				al.SourceFile = oldAl.SourceFile
 			}
 
-			if err := m.manager.Add(bm); err != nil {
+			if err := m.manager.Add(al); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to update: %s", err)
 			} else {
 				m.reloadList()
@@ -711,7 +521,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetSize(width, height)
 			mw, mh := modalDimensions(msg.Width, msg.Height)
 			updatedForm, _ := m.addModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
-			if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+			if fm, ok := updatedForm.(ui.AliasFormModel); ok {
 				m.addModel = &fm
 			}
 			return m, nil
@@ -720,32 +530,29 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		var updatedModel tea.Model
 		updatedModel, cmd = m.addModel.Update(msg)
-		if updatedForm, ok := updatedModel.(ui.BookmarkFormModel); ok {
+		if updatedForm, ok := updatedModel.(ui.AliasFormModel); ok {
 			m.addModel = &updatedForm
 		}
 
 		if m.addModel.IsCompleted() {
 			m.addMode = false
-			alias, path, desc, file, tmuxWindowName, postJumpScript := m.addModel.Values()
-			bm := domain.Bookmark{
-				Alias:          alias,
-				Path:           path,
-				Description:    desc,
-				File:           file,
-				TmuxWindowName: tmuxWindowName,
-				PostJumpScript: postJumpScript,
+			nameInput, valueInput, descInput := m.addModel.Values()
+			al := domain.Alias{
+				Name:        nameInput,
+				Value:       valueInput,
+				Description: descInput,
 			}
 			m.addModel = nil
 
-			// Check for existing bookmark — show overwrite confirmation if needed
-			exists, _ := m.manager.Exists(alias)
+			// Check for existing alias — show overwrite confirmation if needed
+			exists, _ := m.manager.Exists(nameInput)
 			if exists {
 				m.pendingAction = "Overwrite"
-				m.pendingBookmark = &bm
-				existing, _ := m.manager.Get(alias)
+				m.pendingBookmark = &al
+				existing, _ := m.manager.Get(nameInput)
 				confirmModel := ui.NewConfirmationModel(
-					"Overwrite Bookmark",
-					fmt.Sprintf("'%s → %s' exists. Overwrite?", alias, existing.Path),
+					"Overwrite Alias",
+					fmt.Sprintf("'%s → %s' exists. Overwrite?", nameInput, existing.Value),
 					m.theme,
 				)
 				m.confirmModel = &confirmModel
@@ -753,7 +560,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, confirmModel.Init()
 			}
 
-			if err := m.manager.Add(bm); err != nil {
+			if err := m.manager.Add(al); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to add: %s", err)
 			} else {
 				m.reloadList()
@@ -807,38 +614,31 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// When filtering, only allow filter-related keys and enter
-		// Block all alphabetic action keys to prevent interference
 		if m.list.FilterState() == list.Filtering {
 			switch msg.String() {
 			case "q", "esc", "ctrl+c":
 				return m, tea.Quit
 			case "enter":
-				if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-					// Execute the full navigation command directly
-					fmt.Println(m.manager.BuildNavigationCommand(item.Bookmark))
+				if item, ok := m.list.SelectedItem().(aliasItem); ok {
+					fmt.Println(item.Alias.Value)
 					return m, tea.Quit
 				}
 			case "e", "n", "d", "D", "a":
-				// Block these keys during filtering - let them pass to filter input
 				var cmd tea.Cmd
 				m.list, cmd = m.list.Update(msg)
 				return m, cmd
 			}
-			// Pass all other keys to list for filtering
 			var cmd tea.Cmd
 			m.list, cmd = m.list.Update(msg)
 			return m, cmd
 		}
 
-		// Normal mode - handle action keys
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-				// Execute the full navigation command directly
-				fmt.Println(m.manager.BuildNavigationCommand(item.Bookmark))
+			if item, ok := m.list.SelectedItem().(aliasItem); ok {
+				fmt.Println(item.Alias.Value)
 				return m, tea.Quit
 			}
 		case "a":
@@ -847,31 +647,31 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "✗ Failed to get current directory"
 				return m, nil
 			}
-			defaultAlias := bookmark.GenerateAlias(cwd, m.config.AutoAliasSeparator, m.config.AutoAliasLowercase, m.config.DefaultAliasPartLength)
-			formModel := ui.NewBookmarkFormModel(m.theme, defaultAlias, cwd)
+			defaultName := alias.GenerateAlias(cwd, m.config.AutoAliasSeparator, m.config.AutoAliasLowercase, m.config.DefaultAliasPartLength)
+			formModel := ui.NewAliasFormModel(m.theme, defaultName, "cd "+cwd)
 			m.addModel = &formModel
 			m.addMode = true
 
 			if m.screenW > 0 {
 				mw, mh := modalDimensions(m.screenW, m.screenH)
 				updatedForm, _ := m.addModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
-				if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+				if fm, ok := updatedForm.(ui.AliasFormModel); ok {
 					m.addModel = &fm
 				}
 			}
 
 			return m, formModel.Init()
 		case "e":
-			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-				formModel := ui.NewBookmarkFormModelEdit(m.theme, item.Bookmark)
+			if item, ok := m.list.SelectedItem().(aliasItem); ok {
+				formModel := ui.NewAliasFormModelEdit(m.theme, item.Alias)
 				m.editModel = &formModel
 				m.editMode = true
-				m.editingAlias = item.Bookmark.Alias
+				m.editingAlias = item.Alias.Name
 
 				if m.screenW > 0 {
 					mw, mh := modalDimensions(m.screenW, m.screenH)
 					updatedForm, _ := m.editModel.Update(tea.WindowSizeMsg{Width: mw, Height: mh})
-					if fm, ok := updatedForm.(ui.BookmarkFormModel); ok {
+					if fm, ok := updatedForm.(ui.AliasFormModel); ok {
 						m.editModel = &fm
 					}
 				}
@@ -879,9 +679,9 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, formModel.Init()
 			}
 		case "d":
-			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
+			if item, ok := m.list.SelectedItem().(aliasItem); ok {
 				if !m.config.ConfirmDelete {
-					if err := m.manager.Delete(item.Bookmark.Alias); err != nil {
+					if err := m.manager.Delete(item.Alias.Name); err != nil {
 						m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
 					} else {
 						m.reloadList()
@@ -891,8 +691,8 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.pendingAction = "Delete"
 				m.pendingItem = item
 				confirmModel := ui.NewConfirmationModel(
-					"Delete Bookmark",
-					fmt.Sprintf("Delete bookmark '%s'?", item.Bookmark.Alias),
+					"Delete Alias",
+					fmt.Sprintf("Delete alias '%s'?", item.Alias.Name),
 					m.theme,
 				).WithTitleColor(m.theme.Error)
 				m.confirmModel = &confirmModel
@@ -900,18 +700,16 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, confirmModel.Init()
 			}
 		case "D":
-			if item, ok := m.list.SelectedItem().(bookmarkItem); ok {
-				// Force delete without confirmation
-				if err := m.manager.Delete(item.Bookmark.Alias); err != nil {
+			if item, ok := m.list.SelectedItem().(aliasItem); ok {
+				if err := m.manager.Delete(item.Alias.Name); err != nil {
 					m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
 				} else {
-					// Remove from list
 					items := m.list.Items()
 					filtered := make([]list.Item, 0, len(items))
 					for _, listItem := range items {
-						if bm, ok := listItem.(bookmarkItem); ok {
-							if bm.Bookmark.Alias != item.Bookmark.Alias {
-								filtered = append(filtered, bm)
+						if aItem, ok := listItem.(aliasItem); ok {
+							if aItem.Alias.Name != item.Alias.Name {
+								filtered = append(filtered, aItem)
 							}
 						}
 					}
@@ -928,7 +726,7 @@ func (m bookmarkListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m bookmarkListModel) View() string {
+func (m aliasListModel) View() string {
 	listView := m.responsive.FullWidthFrameStyle(m.theme).Render(m.list.View())
 
 	if m.message != "" {
@@ -950,13 +748,13 @@ func (m bookmarkListModel) View() string {
 	return listView
 }
 
-func (m *bookmarkListModel) reloadList() {
-	bookmarks, err := m.manager.Load()
+func (m *aliasListModel) reloadList() {
+	aliases, err := m.manager.Load()
 	if err == nil {
-		sortBookmarks(bookmarks, m.config.DefaultSortBy)
-		items := make([]list.Item, 0, len(bookmarks))
-		for _, b := range bookmarks {
-			items = append(items, bookmarkItem{Bookmark: b, Config: m.config})
+		sortAliases(aliases, m.config.DefaultSortBy)
+		items := make([]list.Item, 0, len(aliases))
+		for _, b := range aliases {
+			items = append(items, aliasItem{Alias: b, Config: m.config})
 		}
 		m.list.SetItems(items)
 	}
@@ -975,18 +773,17 @@ func modalDimensions(screenW, screenH int) (width, height int) {
 	return
 }
 
-func (m bookmarkListModel) executeAction() (tea.Model, tea.Cmd) {
+func (m aliasListModel) executeAction() (tea.Model, tea.Cmd) {
 	switch m.pendingAction {
 	case "Delete":
-		if err := m.manager.Delete(m.pendingItem.Bookmark.Alias); err != nil {
+		if err := m.manager.Delete(m.pendingItem.Alias.Name); err != nil {
 			m.message = fmt.Sprintf("✗ Failed to delete: %s", err)
 		} else {
-			// Remove from list
 			items := m.list.Items()
 			filtered := make([]list.Item, 0, len(items))
 			for _, item := range items {
-				if bm, ok := item.(bookmarkItem); ok {
-					if bm.Bookmark.Alias != m.pendingItem.Bookmark.Alias {
+				if aItem, ok := item.(aliasItem); ok {
+					if aItem.Alias.Name != m.pendingItem.Alias.Name {
 						filtered = append(filtered, item)
 					}
 				}
@@ -999,7 +796,7 @@ func (m bookmarkListModel) executeAction() (tea.Model, tea.Cmd) {
 			if err := m.manager.Add(*m.pendingBookmark); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to overwrite: %s", err)
 			} else {
-				m.message = fmt.Sprintf("✓ Overwritten: %s", m.pendingBookmark.Alias)
+				m.message = fmt.Sprintf("✓ Overwritten: %s", m.pendingBookmark.Name)
 				m.reloadList()
 				m.updateTitle()
 			}

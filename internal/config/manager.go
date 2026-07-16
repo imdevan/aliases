@@ -100,16 +100,17 @@ type partialConfig struct {
 	Error                *string `toml:"error"`
 	Success              *string `toml:"success"`
 	InteractiveDefault   *bool   `toml:"interactive_default"`
-	PlainText            *bool   `toml:"plain_text"`
-	ConfirmDelete        *bool   `toml:"confirm_delete"`
-	ListSpacing          *string `toml:"list_spacing"`
-	BookmarkLocation     *string `toml:"bookmark_location"`
-	NavigationTool       *string `toml:"navigation_tool"`
-	Shell                *string `toml:"shell"`
-	AutoAliasSeparator   *string `toml:"auto_alias_separator"`
-	AutoAliasLowercase   *bool   `toml:"auto_alias_lowercase"`
-	HomeIcon             *string `toml:"home_icon"`
-	DefaultSortBy        *string `toml:"default_sort_by"`
+	PlainText            *bool     `toml:"plain_text"`
+	ConfirmDelete        *bool     `toml:"confirm_delete"`
+	ListSpacing          *string   `toml:"list_spacing"`
+	AliasFile            *string   `toml:"alias_file"`
+	IndexFolders         *[]string `toml:"index_folders"`
+	CacheInterval        *int      `toml:"cache_interval"`
+	Shell                *string   `toml:"shell"`
+	AutoAliasSeparator   *string   `toml:"auto_alias_separator"`
+	AutoAliasLowercase   *bool     `toml:"auto_alias_lowercase"`
+	HomeIcon             *string   `toml:"home_icon"`
+	DefaultSortBy        *string   `toml:"default_sort_by"`
 }
 
 func readConfig(path string) (*partialConfig, error) {
@@ -182,11 +183,14 @@ func applyPartial(config *domain.Config, partial *partialConfig) {
 	if partial.ListSpacing != nil {
 		config.ListSpacing = *partial.ListSpacing
 	}
-	if partial.BookmarkLocation != nil {
-		config.BookmarkLocation = expandPath(*partial.BookmarkLocation)
+	if partial.AliasFile != nil {
+		config.AliasFile = expandPath(*partial.AliasFile)
 	}
-	if partial.NavigationTool != nil {
-		config.NavigationTool = *partial.NavigationTool
+	if partial.IndexFolders != nil {
+		config.IndexFolders = *partial.IndexFolders
+	}
+	if partial.CacheInterval != nil {
+		config.CacheInterval = *partial.CacheInterval
 	}
 	if partial.Shell != nil {
 		config.Shell = *partial.Shell

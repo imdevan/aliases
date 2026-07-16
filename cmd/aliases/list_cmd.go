@@ -5,35 +5,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/flags"
 )
 
-/*
-newListCmd creates the list command for displaying all bookmarks.
-
-The list command shows all bookmarks in a formatted table with:
-  - Alias: The bookmark name
-  - Path: The directory path
-  - Description: Optional bookmark description
-
-The output is formatted with proper alignment for easy reading.
-
-Examples:
-
-	# List all bookmarks
-	bookmark list
-
-	# Use with custom config
-	bookmark list -c ~/.config/bookmark/custom.toml
-*/
 func newListCmd() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all bookmarks",
+		Short: "List all aliases",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := cmd.Flags().GetString("cwd")
 			if err != nil {
@@ -42,35 +24,35 @@ func newListCmd() *cobra.Command {
 
 			cfg := config.Load(cwd, configPath)
 
-			bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
-			bookmarks, err := bmManager.Load()
+			aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
+			aliases, err := aliasManager.Load()
 			if err != nil {
 				return err
 			}
 
-			if len(bookmarks) == 0 {
-				cmd.Println("No bookmarks found")
+			if len(aliases) == 0 {
+				cmd.Println("No aliases found")
 				return nil
 			}
 
-			// Find max alias length for alignment (including description)
-			maxAlias := 0
-			for _, bm := range bookmarks {
-				aliasLen := len(bm.Alias)
-				if bm.Description != "" {
-					aliasLen += len(" # " + bm.Description)
+			// Find max name length for alignment (including description)
+			maxName := 0
+			for _, al := range aliases {
+				nameLen := len(al.Name)
+				if al.Description != "" {
+					nameLen += len(" # " + al.Description)
 				}
-				if aliasLen > maxAlias {
-					maxAlias = aliasLen
+				if nameLen > maxName {
+					maxName = nameLen
 				}
 			}
 
-			for _, bm := range bookmarks {
-				alias := bm.Alias
-				if bm.Description != "" {
-					alias += " # " + bm.Description
+			for _, al := range aliases {
+				name := al.Name
+				if al.Description != "" {
+					name += " # " + al.Description
 				}
-				line := fmt.Sprintf("%-*s  %s", maxAlias, alias, bm.Path)
+				line := fmt.Sprintf("%-*s  %s", maxName, name, al.Value)
 				cmd.Println(line)
 			}
 

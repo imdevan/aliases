@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aliases/internal/adapters/tty"
-	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
 	"github.com/aliases/internal/flags"
@@ -19,24 +19,11 @@ type editOptions struct {
 	configPath string
 }
 
-// @docs-command:
-//
-//	name: edit
-//	description:
-//		The edit command opens a bookmark for editing or opens the entire bookmarks file in the editor.
-//	example:
-//		```bash
-//		# Open all bookmarks in editor
-//		bookmark edit
-//
-//		# Open specific bookmark in form
-//		bookmark edit my-alias
-//		```
 func newEditCmd() *cobra.Command {
 	opts := &editOptions{}
 	cmd := &cobra.Command{
-		Use:   "edit [alias]",
-		Short: "Edit a bookmark or open bookmarks file in editor",
+		Use:   "edit [name]",
+		Short: "Edit an alias or open aliases file in editor",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, _ := os.Getwd()
@@ -51,42 +38,38 @@ func newEditCmd() *cobra.Command {
 }
 
 func runEditCommand(cmd *cobra.Command, args []string, opts *editOptions, cfg domain.Config) error {
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
+	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
 
-	// If no alias provided, just open the bookmarks file in editor
+	// If no alias name provided, just open the aliases file in editor
 	if len(args) == 0 {
-		return openEditor(cfg.Editor, cfg.BookmarkFile(), 0)
+		return openEditor(cfg.Editor, cfg.ResolvedAliasFile(), 0)
 	}
 
-	alias := args[0]
+	name := args[0]
 
-	// Check if bookmark exists
-	exists, err := bmManager.Exists(alias)
+	// Check if alias exists
+	exists, err := aliasManager.Exists(name)
 	if err != nil {
 		return err
 	}
 
-	var bm domain.Bookmark
+	var al domain.Alias
 	if exists {
-		bm, err = bmManager.Get(alias)
+		al, err = aliasManager.Get(name)
 		if err != nil {
 			return err
 		}
 	} else {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
-		}
-		bm = domain.Bookmark{
-			Alias: alias,
-			Path:  cwd,
+		al = domain.Alias{
+			Name:  name,
+			Value: "",
 		}
 	}
 
 	theme := ui.ThemeFromConfig(cfg)
-	m := ui.NewBookmarkFormModelEdit(theme, bm)
+	m := ui.NewAliasFormModelEdit(theme, al)
 	if !exists {
-		m = m.WithTitle(fmt.Sprintf("'%s' Not Found, Add Bookmark", alias))
+		m = m.WithTitle(fmt.Sprintf("'%s' Not Found, Add Alias", name))
 	}
 
 	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
@@ -96,34 +79,29 @@ func runEditCommand(cmd *cobra.Command, args []string, opts *editOptions, cfg do
 		return err
 	}
 
-	fm, ok := result.(ui.BookmarkFormModel)
+	fm, ok := result.(ui.AliasFormModel)
 	if !ok || !fm.IsCompleted() {
 		fmt.Println(ui.CanceledMessage(theme, "Edit"))
 		return nil
 	}
 
-	newAlias, newPath, newDesc, newFile, tmuxWindowName, postJumpScript := fm.Values()
+	newName, newValue, newDesc := fm.Values()
 
-	// If the alias changed and we are editing an existing one, delete the old one
-	if exists && newAlias != alias {
-		if err := bmManager.Delete(alias); err != nil {
+	// If the name changed and we are editing an existing one, delete the old one
+	if exists && newName != name {
+		if err := aliasManager.Delete(name); err != nil {
 			return err
 		}
 	}
 
-	newBm := domain.Bookmark{
-		Alias:          newAlias,
-		Path:           newPath,
-		Description:    newDesc,
-		File:           newFile,
-		TmuxWindowName: tmuxWindowName,
-		PostJumpScript: postJumpScript,
-	}
-	if exists {
-		newBm.CreatedAt = bm.CreatedAt
+	newAl := domain.Alias{
+		Name:        newName,
+		Value:       newValue,
+		Description: newDesc,
+		SourceFile:  al.SourceFile,
 	}
 
-	if err := bmManager.Add(newBm); err != nil {
+	if err := aliasManager.Add(newAl); err != nil {
 		return err
 	}
 
@@ -131,6 +109,6 @@ func runEditCommand(cmd *cobra.Command, args []string, opts *editOptions, cfg do
 	if exists {
 		action = "updated"
 	}
-	printSuccess(cfg, action, newAlias, newPath)
+	printSuccess(cfg, action, newName, newValue)
 	return nil
 }

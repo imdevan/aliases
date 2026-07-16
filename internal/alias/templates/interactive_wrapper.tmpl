@@ -1,4 +1,4 @@
-# Interactive bookmark navigation function
+# Interactive alias navigation function
 {{if .IsMainFunctionEnabled -}}
 # Delegates to consolidated {{.TargetFunction}} function
 {{if eq .Shell "fish" -}}
@@ -15,11 +15,11 @@ def --wrapped {{.FunctionName}} [...args] {
 }
 {{end -}}
 {{else -}}
-# Displays the TUI and executes the selected bookmark command
+# Displays the TUI and executes the selected alias command
 {{if eq .Shell "fish" -}}
 function {{.FunctionName}}
 	set -x CLICOLOR_FORCE 1
-	set cmd (command bookmark -i)
+	set cmd (command aliases -i)
 	if test -n "$cmd"
 		eval $cmd
 	end
@@ -29,7 +29,7 @@ end
 # Note: Nushell interactive wrapper
 def {{.FunctionName}} [] {
 	with-env {CLICOLOR_FORCE: "1"} {
-		let cmd = (^bookmark -i)
+		let cmd = (^aliases -i)
 		if ($cmd | is-not-empty) {
 			let parts = ($cmd | split row ';')
 			for part in $parts {
@@ -46,7 +46,7 @@ def {{.FunctionName}} [] {
 }
 {{else -}}
 {{.FunctionName}}() {
-	local cmd=$(CLICOLOR_FORCE=1 command bookmark -i)
+	local cmd=$(CLICOLOR_FORCE=1 command aliases -i)
 	if [[ -n "$cmd" ]]; then
 		eval "$cmd"
 	fi

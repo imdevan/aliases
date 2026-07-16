@@ -3,6 +3,7 @@ package domain
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	shelladapter "github.com/aliases/internal/adapters/shell"
 )
@@ -28,10 +29,12 @@ type Config struct {
 	ConfirmDelete        bool   `toml:"confirm_delete"`
 	ListSpacing          string `toml:"list_spacing"`
 	
-	// Bookmark settings
-	BookmarkLocation       string `toml:"bookmark_location"`
-	NavigationTool         string `toml:"navigation_tool"`
-	Shell                  string `toml:"shell"`
+	// Alias settings
+	AliasFile          string            `toml:"alias_file"`
+	Shell              string            `toml:"shell"`
+	IndexFolders       []string          `toml:"index_folders"`
+	CacheInterval      int               `toml:"cache_interval"`
+	ScriptIcons        map[string]string `toml:"script_icons"`
 	AutoAliasSeparator     string `toml:"auto_alias_separator"`
 	AutoAliasLowercase     bool   `toml:"auto_alias_lowercase"`
 	DefaultAliasPartLength int    `toml:"default_alias_part_length"`
@@ -44,8 +47,8 @@ type Config struct {
 // DefaultConfig returns the default configuration values.
 func DefaultConfig() Config {
 	home, _ := os.UserHomeDir()
-	bookmarkLocation := filepath.Join(home, ".bookmarks")
 	detectedShell := shelladapter.DetectShell()
+	aliasFile := filepath.Join(home, ".aliases", GetAliasFileName(detectedShell))
 	
 	return Config{
 		Editor:               "nvim",
@@ -66,34 +69,57 @@ func DefaultConfig() Config {
 		PlainText:            false,
 		ConfirmDelete:        true,
 		ListSpacing:          "space",
-		BookmarkLocation:     bookmarkLocation,
-		NavigationTool:       "cd",
-		Shell:                  detectedShell,
+		AliasFile:            aliasFile,
+		Shell:                detectedShell,
+		IndexFolders:         []string{},
+		CacheInterval:        300,
+		ScriptIcons:          map[string]string{},
 		AutoAliasSeparator:     "",
 		AutoAliasLowercase:     true,
 		DefaultAliasPartLength: 1, // Take 1 character from each part by default
 		HomeIcon:               "~",
 		DefaultSortBy:        "newest",
 		FunctionAlias:        "true",
-		InteractiveAlias:     "bm",
+		InteractiveAlias:     "al",
 	}
 }
 
-// GetBookmarkFileName returns the appropriate bookmark filename for the shell.
-func GetBookmarkFileName(shell string) string {
+// GetAliasFileName returns the appropriate alias filename for the shell.
+func GetAliasFileName(shell string) string {
 	switch shell {
 	case "fish":
-		return "bookmarks.fish"
+		return "aliases.fish"
 	case "nu", "nushell":
-		return "bookmarks.nu"
-	default: // bash, zsh, sh
-		return "bookmarks.sh"
+		return "aliases.nu"
+	case "zsh":
+		return "aliases.zsh"
+	default: // bash, sh
+		return "aliases.sh"
 	}
 }
 
-// BookmarkFile returns the full path to the bookmark file based on shell.
-func (c Config) BookmarkFile() string {
-	return filepath.Join(c.BookmarkLocation, GetBookmarkFileName(c.Shell))
+// ResolvedAliasFile returns the expanded path to the alias file.
+func (c Config) ResolvedAliasFile() string {
+	return expandPath(c.AliasFile)
+}
+
+func expandPath(value string) string {
+	expanded := os.ExpandEnv(value)
+	if expanded == "" {
+		return expanded
+	}
+	if expanded == "~" {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home
+		}
+		return expanded
+	}
+	if strings.HasPrefix(expanded, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, strings.TrimPrefix(expanded, "~/"))
+		}
+	}
+	return expanded
 }
 
 func xdgHome(envKey, fallbackSuffix string) string {

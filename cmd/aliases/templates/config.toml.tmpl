@@ -1,4 +1,4 @@
-# Bookmark Manager Configuration
+# Alias Manager Configuration
 
 # General
 # editor = {{printf "%q" .Editor}}
@@ -6,12 +6,14 @@
 # CLI behavior
 # interactive_default = {{.InteractiveDefault}}
 # plain_text = false  # When true: output plain text confirmation messages and errors instead of styled output
-# confirm_delete = {{.ConfirmDelete}}  # When false: delete bookmarks without confirmation prompt
+# confirm_delete = {{.ConfirmDelete}}  # When false: delete aliases without confirmation prompt
 
-# Bookmark settings
-# bookmark_location = {{printf "%q" .BookmarkLocation}}  # Directory for bookmark files
-# navigation_tool = {{printf "%q" .NavigationTool}}  # Options: cd, z, zoxide, none
+# Alias settings
+# alias_file = {{printf "%q" .AliasFile}}  # File where aliases are stored
 # shell = {{printf "%q" .Shell}}  # Options: bash, zsh, fish, nu
+# index_folders = []  # Glob patterns to scan for alias files (e.g. ["~/dotfiles/*.zsh"])
+# cache_interval = {{.CacheInterval}}
+# script_icons = {}
 
 # Auto-alias generation
 # auto_alias_separator = {{printf "%q" .AutoAliasSeparator}}  # Character between first letters (empty = "", "-" = "m-c-p")
@@ -19,22 +21,22 @@
 # default_alias_part_length = {{.DefaultAliasPartLength}}  # Number of characters to take from each part (1 = first letter only)
 
 # Function alias wrapper
-# When enabled, adds a shell function that auto-sources bookmarks after running bookmark commands
-# Options: "true" (use default name "bookmark"), "custom_name" (use custom function name), "false" (disabled)
+# When enabled, adds a shell function that auto-sources aliases after running alias commands
+# Options: "true" (use default name "aliases"), "custom_name" (use custom function name), "false" (disabled)
 # function_alias = {{printf "%q" .FunctionAlias}}
 
 # Interactive alias wrapper
-# When enabled, adds a shell function for interactive bookmark navigation (bookmark -i)
-# The function displays the TUI and executes the selected bookmark command
-# Options: "bm" (default), "custom_name" (use custom function name), "false" (disabled)
+# When enabled, adds a shell function for interactive alias navigation (aliases -i)
+# The function displays the TUI and executes the selected alias command
+# Options: "al" (default), "custom_name" (use custom function name), "false" (disabled)
 # interactive_alias = {{printf "%q" .InteractiveAlias}}
 
 # Display
-# home_icon = {{printf "%q" .HomeIcon}}  # Icon to represent home directory in list view (can be nerd font icon like "")
+# home_icon = {{printf "%q" .HomeIcon}}  # Icon to represent home directory in list view
 # default_sort_by = {{printf "%q" .DefaultSortBy}}  # Options: newest, oldest, a-z, z-a
 
 # UI
-# list_spacing options: compact (title only), tight (title + description, no margin), space (default, with spacing)
+# list_spacing options: compact, tight, space
 # list_spacing = {{printf "%q" .ListSpacing}}
 
 # Colors

@@ -7,39 +7,30 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	bm "github.com/aliases/internal/bookmark"
+	al "github.com/aliases/internal/alias"
 	"github.com/aliases/internal/domain"
 )
 
 const (
-	formAlias = iota
-	formPath
+	formName = iota
+	formValue
 	formDesc
-	formTmux
-	formFile
-	formScript
 )
 
 var fieldTitles = []string{
-	"Alias",
-	"Path",
+	"Name",
+	"Value",
 	"Description (optional)",
-	"Tmux Window (optional)",
-	"File (optional)",
-	"Post-jump script (optional)",
 }
 
 var fieldDescs = []string{
-	"Short name for the bookmark",
-	"Directory path to bookmark",
+	"Short name for the alias",
+	"Command or script that the alias executes",
 	"",
-	"Tmux window name to create/switch to",
-	"File to open after navigation",
-	"Script/command to run after jumping",
 }
 
-// BookmarkFormModel is a form for creating a new bookmark.
-type BookmarkFormModel struct {
+// AliasFormModel is a form for creating/editing an alias.
+type AliasFormModel struct {
 	inputs           []textinput.Model
 	focused          int
 	theme            Theme
@@ -51,101 +42,74 @@ type BookmarkFormModel struct {
 }
 
 // WithTitle sets a custom title for the form model.
-func (m BookmarkFormModel) WithTitle(title string) BookmarkFormModel {
+func (m AliasFormModel) WithTitle(title string) AliasFormModel {
 	m.title = title
 	return m
 }
 
-// NewBookmarkFormModel creates a new bookmark form with optional default values.
-func NewBookmarkFormModel(theme Theme, defaultAlias, defaultPath string) BookmarkFormModel {
-	inputs := make([]textinput.Model, 6)
+// NewAliasFormModel creates a new alias form with optional default values.
+func NewAliasFormModel(theme Theme, defaultName, defaultValue string) AliasFormModel {
+	inputs := make([]textinput.Model, 3)
 
-	inputs[formAlias] = textinput.New()
-	inputs[formAlias].Placeholder = defaultAlias
-	inputs[formAlias].Focus()
-	inputs[formAlias].Prompt = ""
+	inputs[formName] = textinput.New()
+	inputs[formName].Placeholder = defaultName
+	inputs[formName].Focus()
+	inputs[formName].Prompt = ""
 
-	inputs[formPath] = textinput.New()
-	inputs[formPath].Placeholder = defaultPath
-	inputs[formPath].Prompt = ""
+	inputs[formValue] = textinput.New()
+	inputs[formValue].Placeholder = defaultValue
+	inputs[formValue].Prompt = ""
 
 	inputs[formDesc] = textinput.New()
 	inputs[formDesc].Placeholder = "Optional description"
 	inputs[formDesc].Prompt = ""
 
-	inputs[formTmux] = textinput.New()
-	inputs[formTmux].Placeholder = "Optional tmux window name"
-	inputs[formTmux].Prompt = ""
-
-	inputs[formFile] = textinput.New()
-	inputs[formFile].Placeholder = "Optional file to open"
-	inputs[formFile].Prompt = ""
-
-	inputs[formScript] = textinput.New()
-	inputs[formScript].Placeholder = "Optional post-jump script"
-	inputs[formScript].Prompt = ""
-
-	return BookmarkFormModel{
+	return AliasFormModel{
 		inputs:           inputs,
 		focused:          0,
 		theme:            theme,
 		responsive:       NewResponsiveManager(80),
-		title:            "Add Bookmark",
+		title:            "Add Alias",
 		validationErrors: make(map[int]string),
 	}
 }
 
-// NewBookmarkFormModelEdit creates a new bookmark form prefilled with the values of an existing bookmark.
-func NewBookmarkFormModelEdit(theme Theme, bm domain.Bookmark) BookmarkFormModel {
-	inputs := make([]textinput.Model, 6)
+// NewAliasFormModelEdit creates a new alias form prefilled with existing values.
+func NewAliasFormModelEdit(theme Theme, alias domain.Alias) AliasFormModel {
+	inputs := make([]textinput.Model, 3)
 
-	inputs[formAlias] = textinput.New()
-	inputs[formAlias].Placeholder = bm.Alias
-	inputs[formAlias].SetValue(bm.Alias)
-	inputs[formAlias].Focus()
-	inputs[formAlias].Prompt = ""
+	inputs[formName] = textinput.New()
+	inputs[formName].Placeholder = alias.Name
+	inputs[formName].SetValue(alias.Name)
+	inputs[formName].Focus()
+	inputs[formName].Prompt = ""
 
-	inputs[formPath] = textinput.New()
-	inputs[formPath].Placeholder = bm.Path
-	inputs[formPath].SetValue(bm.Path)
-	inputs[formPath].Prompt = ""
+	inputs[formValue] = textinput.New()
+	inputs[formValue].Placeholder = alias.Value
+	inputs[formValue].SetValue(alias.Value)
+	inputs[formValue].Prompt = ""
 
 	inputs[formDesc] = textinput.New()
 	inputs[formDesc].Placeholder = "Optional description"
-	inputs[formDesc].SetValue(bm.Description)
+	inputs[formDesc].SetValue(alias.Description)
 	inputs[formDesc].Prompt = ""
 
-	inputs[formTmux] = textinput.New()
-	inputs[formTmux].Placeholder = "Optional tmux window name"
-	inputs[formTmux].SetValue(bm.TmuxWindowName)
-	inputs[formTmux].Prompt = ""
-
-	inputs[formFile] = textinput.New()
-	inputs[formFile].Placeholder = "Optional file to open"
-	inputs[formFile].SetValue(bm.File)
-	inputs[formFile].Prompt = ""
-
-	inputs[formScript] = textinput.New()
-	inputs[formScript].Placeholder = "Optional post-jump script"
-	inputs[formScript].SetValue(bm.PostJumpScript)
-	inputs[formScript].Prompt = ""
-
-	return BookmarkFormModel{
+	return AliasFormModel{
 		inputs:           inputs,
 		focused:          0,
 		theme:            theme,
 		responsive:       NewResponsiveManager(80),
-		title:            "Edit Bookmark",
+		title:            "Edit Alias",
 		validationErrors: make(map[int]string),
 	}
 }
 
 // Init initializes the form.
-func (m BookmarkFormModel) Init() tea.Cmd {
+func (m AliasFormModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *BookmarkFormModel) validateField(index int) bool {
+func (m *AliasFormModel) validateField(index int) bool {
 	delete(m.validationErrors, index)
 
 	val := m.inputs[index].Value()
@@ -155,29 +119,29 @@ func (m *BookmarkFormModel) validateField(index int) bool {
 	val = strings.TrimSpace(val)
 
 	switch index {
-	case formAlias:
+	case formName:
 		if val == "" {
-			m.validationErrors[formAlias] = "* Alias cannot be empty"
+			m.validationErrors[formName] = "* Name cannot be empty"
 			return false
 		}
-		if !bm.IsValidAlias(val) {
-			m.validationErrors[formAlias] = "* Alias must contain only alphanumeric characters, hyphens, and underscores"
+		if !al.IsValidAlias(val) {
+			m.validationErrors[formName] = "* Name must contain only alphanumeric characters, hyphens, and underscores"
 			return false
 		}
-		if bm.IsReservedKeyword(val) {
-			m.validationErrors[formAlias] = "* Alias cannot be a shell reserved keyword"
+		if al.IsReservedKeyword(val) {
+			m.validationErrors[formName] = "* Name cannot be a shell reserved keyword"
 			return false
 		}
-	case formPath:
+	case formValue:
 		if val == "" {
-			m.validationErrors[formPath] = "* Path cannot be empty"
+			m.validationErrors[formValue] = "* Value cannot be empty"
 			return false
 		}
 	}
 	return true
 }
 
-func (m *BookmarkFormModel) validateAll() bool {
+func (m *AliasFormModel) validateAll() bool {
 	valid := true
 	for i := range m.inputs {
 		if !m.validateField(i) {
@@ -188,11 +152,10 @@ func (m *BookmarkFormModel) validateAll() bool {
 }
 
 // Update handles messages for the form.
-func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m AliasFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.responsive.SetWidth(msg.Width)
-		// Update inputs width based on content width
 		inputWidth := m.responsive.MaxContentWidth() - 6
 		if inputWidth < 20 {
 			inputWidth = 20
@@ -209,7 +172,6 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			// Validate current field first
 			if !m.validateField(m.focused) {
 				return m, nil
 			}
@@ -218,7 +180,6 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.completed = true
 					return m, tea.Quit
 				}
-				// Focus first invalid field
 				for i := range m.inputs {
 					if _, exists := m.validationErrors[i]; exists {
 						m.inputs[m.focused].Blur()
@@ -239,7 +200,6 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.completed = true
 				return m, tea.Quit
 			}
-			// Focus first invalid field
 			for i := range m.inputs {
 				if _, exists := m.validationErrors[i]; exists {
 					m.inputs[m.focused].Blur()
@@ -276,14 +236,14 @@ func (m BookmarkFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the form.
-func (m BookmarkFormModel) View() string {
+func (m AliasFormModel) View() string {
 	if m.completed || m.cancelled {
 		return ""
 	}
 
 	titleText := m.title
 	if titleText == "" {
-		titleText = "Create New Bookmark"
+		titleText = "Create New Alias"
 	}
 	title := lipgloss.NewStyle().
 		Bold(true).
@@ -294,21 +254,10 @@ func (m BookmarkFormModel) View() string {
 		Foreground(m.theme.Muted).
 		Render("↑/↓ or tab/shift+tab: navigate • enter: next • alt+enter: submit • esc: cancel")
 
-	// Calculate sliding window for exactly 3 items
-	start := m.focused - 1
-	if start < 0 {
-		start = 0
-	}
-	if start+3 > len(m.inputs) {
-		start = len(m.inputs) - 3
-	}
-	end := start + 3
-
 	var items []string
-	for i := start; i < end; i++ {
+	for i := range m.inputs {
 		var itemLines []string
 
-		// Title
 		titleStyle := lipgloss.NewStyle().Bold(true)
 		if i == m.focused {
 			titleStyle = titleStyle.Foreground(m.theme.Secondary)
@@ -317,7 +266,6 @@ func (m BookmarkFormModel) View() string {
 		}
 		itemLines = append(itemLines, titleStyle.Render(fieldTitles[i]))
 
-		// Validation Error (using m.theme.Error)
 		if errMsg, exists := m.validationErrors[i]; exists && errMsg != "" {
 			errStyle := lipgloss.NewStyle().
 				Foreground(m.theme.Error).
@@ -325,14 +273,11 @@ func (m BookmarkFormModel) View() string {
 			itemLines = append(itemLines, errStyle.Render(errMsg))
 		}
 
-		// Description
 		if fieldDescs[i] != "" {
 			descStyle := lipgloss.NewStyle().Foreground(m.theme.Muted)
 			itemLines = append(itemLines, descStyle.Render(fieldDescs[i]))
 		}
 
-		// Input wrapped in border
-		// We set the width of the input wrapper to the responsive content width
 		borderWidth := m.responsive.MaxContentWidth() - 2
 		if borderWidth < 22 {
 			borderWidth = 22
@@ -368,34 +313,28 @@ func (m BookmarkFormModel) View() string {
 }
 
 // Values returns the form values.
-func (m BookmarkFormModel) Values() (alias, path, desc, file, tmuxWindowName, postJumpScript string) {
-	alias = m.inputs[formAlias].Value()
-	if alias == "" {
-		alias = m.inputs[formAlias].Placeholder
+func (m AliasFormModel) Values() (name, value, desc string) {
+	name = m.inputs[formName].Value()
+	if name == "" {
+		name = m.inputs[formName].Placeholder
 	}
-	path = m.inputs[formPath].Value()
-	if path == "" {
-		path = m.inputs[formPath].Placeholder
+	value = m.inputs[formValue].Value()
+	if value == "" {
+		value = m.inputs[formValue].Placeholder
 	}
 	desc = m.inputs[formDesc].Value()
-	file = m.inputs[formFile].Value()
-	tmuxWindowName = m.inputs[formTmux].Value()
-	postJumpScript = m.inputs[formScript].Value()
 
-	return strings.TrimSpace(alias),
-		strings.TrimSpace(path),
-		strings.TrimSpace(desc),
-		strings.TrimSpace(file),
-		strings.TrimSpace(tmuxWindowName),
-		strings.TrimSpace(postJumpScript)
+	return strings.TrimSpace(name),
+		strings.TrimSpace(value),
+		strings.TrimSpace(desc)
 }
 
 // IsCompleted returns true if the form was completed successfully.
-func (m BookmarkFormModel) IsCompleted() bool {
+func (m AliasFormModel) IsCompleted() bool {
 	return m.completed && !m.cancelled
 }
 
 // IsCancelled returns true if the form was cancelled.
-func (m BookmarkFormModel) IsCancelled() bool {
+func (m AliasFormModel) IsCancelled() bool {
 	return m.cancelled
 }

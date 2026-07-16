@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aliases/internal/adapters/tty"
-	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
 	"github.com/aliases/internal/flags"
@@ -16,35 +16,23 @@ import (
 )
 
 type addOptions struct {
-	configPath  string
-	tmux        bool
-	tmuxName    string
-	description string
-	yes         bool
-	file        string
-	execute     string
-	source      string
+	configPath string
+	yes        bool
 }
 
 func newAddCmd() *cobra.Command {
 	opts := &addOptions{}
 	cmd := &cobra.Command{
-		Use:   "add [alias]",
-		Short: "Add a new bookmark",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "add [name] [value] [description]",
+		Short: "Add a new alias",
+		Args:  cobra.MaximumNArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAddInteractive(cmd, args, opts)
 		},
 	}
 
 	flags.Set(cmd, &opts.configPath, "config", "c", "config file path")
-	flags.Set(cmd, &opts.tmux, "tmux", "t", "set tmux window name (same as alias)")
-	flags.Set(cmd, &opts.tmuxName, "tmux-name", "T", "custom tmux window name")
-	flags.Set(cmd, &opts.description, "description", "d", "bookmark description")
 	flags.Set(cmd, &opts.yes, "yes", "y", "skip form, save directly")
-	flags.Set(cmd, &opts.file, "file", "f", "file to open in editor after navigation")
-	flags.Set(cmd, &opts.execute, "execute", "x", "command to execute after navigation")
-	flags.Set(cmd, &opts.source, "source", "s", "path to bookmark (instead of current directory)")
 
 	return cmd
 }
@@ -56,48 +44,55 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 	}
 
 	cfg := config.Load(cwd, opts.configPath)
+	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
 
-	targetPath := cwd
-	if opts.source != "" {
-		targetPath = opts.source
+	var name, value, description string
+	if len(args) >= 1 {
+		name = args[0]
 	}
-
-	alias := generateAlias(args, targetPath, cfg)
-	bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
+	if len(args) >= 2 {
+		value = args[1]
+	}
+	if len(args) >= 3 {
+		description = args[2]
+	}
 
 	// -y: skip form, save directly
 	if opts.yes {
-		bm := buildAddBookmark(alias, targetPath, opts)
-		exists, err := bmManager.Exists(alias)
+		if name == "" || value == "" {
+			return fmt.Errorf("name and value are required when using --yes flag")
+		}
+		alItem := domain.Alias{
+			Name:        name,
+			Value:       value,
+			Description: description,
+		}
+		exists, err := aliasManager.Exists(name)
 		if err != nil {
 			return err
 		}
-		if err := bmManager.Add(bm); err != nil {
+		if err := aliasManager.Add(alItem); err != nil {
 			return err
 		}
 		action := "created"
 		if exists {
 			action = "updated"
 		}
-		printSuccess(cfg, action, alias, targetPath)
+		printSuccess(cfg, action, name, value)
 		return nil
 	}
 
-	// Open form prefilled with args/flags values
-	tmuxName := opts.tmuxName
-	if opts.tmux && tmuxName == "" {
-		tmuxName = alias
-	}
-	prefill := domain.Bookmark{
-		Alias:          alias,
-		Path:           targetPath,
-		Description:    opts.description,
-		File:           opts.file,
-		TmuxWindowName: tmuxName,
-	}
-
 	theme := ui.ThemeFromConfig(cfg)
-	m := ui.NewBookmarkFormModelEdit(theme, prefill).WithTitle("Add Bookmark")
+	var m ui.AliasFormModel
+	if name != "" || value != "" || description != "" {
+		m = ui.NewAliasFormModelEdit(theme, domain.Alias{
+			Name:        name,
+			Value:       value,
+			Description: description,
+		}).WithTitle("Add Alias")
+	} else {
+		m = ui.NewAliasFormModel(theme, "", "").WithTitle("Add Alias")
+	}
 
 	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
 	p := tea.NewProgram(m, progOpts...)
@@ -106,51 +101,30 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 		return err
 	}
 
-	fm, ok := result.(ui.BookmarkFormModel)
+	fm, ok := result.(ui.AliasFormModel)
 	if !ok || !fm.IsCompleted() {
 		cmd.Println(ui.CanceledMessage(theme, "Add"))
 		return nil
 	}
 
-	fAlias, fPath, fDesc, fFile, fTmux, fScript := fm.Values()
-	bm := domain.Bookmark{
-		Alias:          fAlias,
-		Path:           fPath,
-		Description:    fDesc,
-		File:           fFile,
-		TmuxWindowName: fTmux,
-		PostJumpScript: fScript,
-		Execute:        opts.execute,
+	fName, fValue, fDesc := fm.Values()
+	alItem := domain.Alias{
+		Name:        fName,
+		Value:       fValue,
+		Description: fDesc,
 	}
 
-	exists, err := bmManager.Exists(bm.Alias)
+	exists, err := aliasManager.Exists(alItem.Name)
 	if err != nil {
 		return err
 	}
-	if err := bmManager.Add(bm); err != nil {
+	if err := aliasManager.Add(alItem); err != nil {
 		return err
 	}
 	action := "created"
 	if exists {
 		action = "updated"
 	}
-	printSuccess(cfg, action, bm.Alias, bm.Path)
+	printSuccess(cfg, action, alItem.Name, alItem.Value)
 	return nil
-}
-
-func buildAddBookmark(alias, path string, opts *addOptions) domain.Bookmark {
-	bm := domain.Bookmark{
-		Alias:       alias,
-		Path:        path,
-		Description: opts.description,
-		File:        opts.file,
-		Execute:     opts.execute,
-	}
-	if opts.tmux {
-		bm.TmuxWindowName = alias
-	}
-	if opts.tmuxName != "" {
-		bm.TmuxWindowName = opts.tmuxName
-	}
-	return bm
 }

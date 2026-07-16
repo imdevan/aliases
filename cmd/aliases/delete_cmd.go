@@ -7,48 +7,32 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/bookmark"
+	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/flags"
 	"github.com/aliases/internal/ui"
 )
 
-// @docs-command:
-//
-//	name: delete
-//	description:
-//		The delete command removes a bookmark by its alias.
-//		By default, it will prompt for confirmation before deleting.
-//	example:
-//		```bash
-//		~/foo
-//		$ bookmark	# create alias "f" that points to ~/foo
-//
-//		~/foo
-//		$ bookmark delete f	# delete alias "f"
-//		```
-//	note:
-//		Delete confirmation can be skipped by setting `confirm_delete=false` in the [config](https://devan.gg/bookmark/configuration/)
 func newDeleteCmd() *cobra.Command {
 	var configPath string
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <alias>",
-		Short: "Delete a bookmark",
+		Use:   "delete <name>",
+		Short: "Delete an alias",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			alias := args[0]
+			name := args[0]
 
 			cwd, _ := os.Getwd()
 			cfg := config.Load(cwd, configPath)
 
-			bmManager := bookmark.NewManager(cfg.BookmarkFile(), cfg.Shell, cfg.NavigationTool, cfg.Editor, cfg.FunctionAlias, cfg.InteractiveAlias)
+			aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
 
-			// Check if bookmark exists
-			bm, err := bmManager.Get(alias)
-			if err == bookmark.ErrBookmarkNotFound {
-				return fmt.Errorf("bookmark '%s' not found", alias)
+			// Check if alias exists
+			al, err := aliasManager.Get(name)
+			if err == alias.ErrAliasNotFound {
+				return fmt.Errorf("alias '%s' not found", name)
 			}
 			if err != nil {
 				return err
@@ -58,8 +42,8 @@ func newDeleteCmd() *cobra.Command {
 			if !force && cfg.ConfirmDelete {
 				theme := ui.ThemeFromConfig(cfg)
 				confirmModel := ui.NewConfirmationModel(
-					"Delete Bookmark",
-					fmt.Sprintf("Delete bookmark '%s → %s'?", bm.Alias, bm.Path),
+					"Delete Alias",
+					fmt.Sprintf("Delete alias '%s → %s'?", al.Name, al.Value),
 					theme,
 				).WithTitleColor(theme.Error)
 
@@ -77,11 +61,11 @@ func newDeleteCmd() *cobra.Command {
 				}
 			}
 
-			if err := bmManager.Delete(alias); err != nil {
+			if err := aliasManager.Delete(name); err != nil {
 				return err
 			}
 
-			printSuccess(cfg, "deleted", alias, "")
+			printSuccess(cfg, "deleted", name, "")
 			return nil
 		},
 	}
