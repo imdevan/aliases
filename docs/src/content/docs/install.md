@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Installation instructions for bookmark
+description: Installation instructions for aliases
 ---
 
 

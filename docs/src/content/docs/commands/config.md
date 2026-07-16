@@ -24,9 +24,9 @@ On first call `~/.bookmark/bookmarks.sh` and `~/.config/bookmark/config.toml` wi
 ## Usage
 
 ```bash
-bookmark config
+aliases config
 ```
 
 ## Source
 
-See [config.go](https://github.com/imdevan/bookmark/blob/main/cmd/bookmark/config.go) for implementation details.
+See [config.go](https://github.com/imdevan/aliases/blob/main/cmd/aliases/config.go) for implementation details.

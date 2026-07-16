@@ -23,20 +23,9 @@ Delete confirmation can be skipped by setting `confirm_delete=false` in the [con
 ## Usage
 
 ```bash
-bookmark delete <alias>
+aliases delete <alias>
 ```
-
-## Flags
-
-
-
-
-| Flag | Type | Description |
-|------|------|-------------|
-| -c, --config | string | config file path |
-| -f, --force | bool | skip confirmation |
-
 
 ## Source
 
-See [delete_cmd.go](https://github.com/imdevan/bookmark/blob/main/cmd/bookmark/delete_cmd.go) for implementation details.
+See [delete_cmd.go](https://github.com/imdevan/aliases/blob/main/cmd/aliases/delete_cmd.go) for implementation details.

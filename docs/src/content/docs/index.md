@@ -1,70 +1,67 @@
 ---
-title: Bookmark
-description: A bookmark manager for your favorite shell
+title: Aliases
+description: An alias manager for your favorite shell
 ---
 
 
-<img width="407" height="270" alt="screenshot-2026-03-06_14-10-16" src="https://github.com/user-attachments/assets/081eeec6-bbbd-4687-b29a-b659892a5e58" />
-
-A bookmark manager for your favorite shell
+An alias manager for your favorite shell
 
 ## Features
 
-- A bookmark manager that works WITH your shell
+- An alias manager that works WITH your shell
 - Integrates with your favorite shell!
-- Integrates with TMUX and your favorite editor!
 ## Install
 
 ```bash
 # With homebrew
-homebrew install imdevan/bookmark/bookmark
+homebrew install imdevan/aliases/aliases
 
 # With AUR
-yay -S bookmark-plus
+yay -S aliasesaa
 
 # Manual
-git clone https://github.com/imdevan/bookmark.git
-cd bookmark
+git clone https://github.com/imdevan/aliases.git
+cd aliases
 just build && sudo just install
 ```
 
-See [install](https://devan.gg/bookmark/install/)  docs for more information.
+See [install](https://devan.gg/aliases/install/)  docs for more information.
 
 
-## Bookmark your favorite folder
+## aliases your favorite folder
 
 ```bash
 ~/Projects/favorite-project
-bookmark
-"bookmark fp created!"
+aliases
+"aliases fp created!"
 
 # Pass a name
-bookmark foo
-"bookmark foo created!"
+aliases foo
+"aliases foo created!"
 
 # Rename tmux window on navigation
-bookmark -t
+aliases -t
 
 #  Rename tmux custom window
-bookmark -T foo
+aliases -T foo
 ```
 
 
-## How `bookmark` works
+## How `aliases` works
 
-A **bookmark** in this case is an alias that is sourced into the shell on load time. 
+A **aliases** in this case is an alias that is sourced into the shell on load time. 
 
-Aliases live in `~/.bookmarks/bookmarks.sh` by default. The location can be changed via config options. 
+Aliases live in `~/.aliasess/aliasess.sh` by default. The location can be changed via config options. 
 
-Bookmark is essentially a light weight wrapper around that file. 
+aliases is essentially a light weight wrapper around that file. 
 
 ### Escaping and Quoting
 
-When bookmarks are saved, the tool automatically escapes and quotes all fields (such as directory paths, descriptions, tmux window names, and associated files or scripts) to ensure they are written and parsed correctly regardless of special characters like single/double quotes, pipes (`|`), or newlines. The escaping behavior is adapted automatically to your configured shell (POSIX, Fish, or Nushell). 
+When aliasess are saved, the tool automatically escapes and quotes all fields (such as directory paths, descriptions, tmux window names, and associated files or scripts) to ensure they are written and parsed correctly regardless of special characters like single/double quotes, pipes (`|`), or newlines. The escaping behavior is adapted automatically to your configured shell (POSIX, Fish, or Nushell). 
 
 ## Using different shell? 
 
-Bookmark is set up for zsh first but works with any shell. Run `bookmark config init` to create a custom config file.
+aliases is set up for zsh first but works with any shell. Run `aliases config init` to create a custom config file.
 
 See configuration options for more info.
 
@@ -72,23 +69,23 @@ See configuration options for more info.
 
 
 ```bash
-bookmark                 # Bookmark a file
-bm                       # Interactive bookmark list
-bookmark add             # Interactive form to add a new bookmark
-bookmark config          # View or edit configuration
-bookmark config init     # Generate default config file
-bookmark completion      # Generate shell completion scripts
+aliases                 # aliases a file
+bm                       # Interactive aliases list
+aliases add             # Interactive form to add a new aliases
+aliases config          # View or edit configuration
+aliases config init     # Generate default config file
+aliases completion      # Generate shell completion scripts
 ```
 
 ## Configuration
 
-Bookmark is designed to be highly customizable. 
+aliases is designed to be highly customizable. 
 
 ```bash
-bookmark config # open config file location
+aliases config # open config file location
 ```
 
-Configuration file location: `~/.config/bookmark/config.toml`  (`$XDG_CONFIG_HOME/bookmark/config.toml`)
+Configuration file location: `~/.config/aliases/config.toml`  (`$XDG_CONFIG_HOME/aliases/config.toml`)
 
 See [configuration](./CONFIGURATION.md) for installation options.
 

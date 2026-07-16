@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Configuration options for bookmark
+description: Configuration options for aliases
 ---
 
 

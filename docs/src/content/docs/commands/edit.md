@@ -18,19 +18,9 @@ bookmark edit my-alias
 ## Usage
 
 ```bash
-bookmark edit [alias]
+aliases edit [alias]
 ```
-
-## Flags
-
-
-
-
-| Flag | Type | Description |
-|------|------|-------------|
-| -c, --config | string | config file path |
-
 
 ## Source
 
-See [edit_cmd.go](https://github.com/imdevan/bookmark/blob/main/cmd/bookmark/edit_cmd.go) for implementation details.
+See [edit_cmd.go](https://github.com/imdevan/aliases/blob/main/cmd/aliases/edit_cmd.go) for implementation details.

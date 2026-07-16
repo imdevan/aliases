@@ -20,22 +20,22 @@ const apiReference = {
 };
 
 const sidebar = [
-  { label: 'bookmark', link: '/' },
+  { label: 'aliases', link: '/' },
   { label: 'Install', link: '/install' },
   { label: 'Commands', items: [
-    { label: 'bookmark', link: '/commands/bookmark' },
+    { label: 'aliases', link: '/commands/aliases' },
     { label: 'add', link: '/commands/add' },
-    { label: 'completion', link: '/commands/completion' },
     {
       label: 'config',
       items: [
         { label: 'config', link: '/commands/config' },
-        { label: 'config init', link: '/commands/config-init' },
+        { label: 'config config init', link: '/commands/config-config init' },
       ],
     },
     { label: 'delete', link: '/commands/delete' },
     { label: 'edit', link: '/commands/edit' },
-    { label: 'list', link: '/commands/list' },
+    { label: 'newCompletionCmd', link: '/commands/newCompletionCmd' },
+    { label: 'newListCmd', link: '/commands/newListCmd' },
 
   ] },
   { label: 'Configuration', link: '/configuration' },
