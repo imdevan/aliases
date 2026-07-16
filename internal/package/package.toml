@@ -1,16 +1,14 @@
 # Package information - source of truth for project metadata
 # Run just sync after modifying this file
 
-name = "bookmark"
-# Name for distribution packages (AUR, Homebrew)
-package_name = "bookmark-plus"
-homebrew_package_name = "bookmark"
-module = "bookmark"
-description = "A bookmark manager for your favorite shell"
-short = "Bookmark manager"
-version = "1.2.0"
-homepage = "https://devan.gg/bookmark"
-repository = "https://github.com/imdevan/bookmark/"
+name = "aliases"
+package_name = "aliases"
+module = "github.com/aliases"
+description = "An alias manager for your favorite shell"
+short = "alias manager"
+version = "1.0.0"
+homepage = "https://devan.gg/aliases"
+repository = "https://github.com/imdevan/aliases/"
 author = "hi@devan.gg"
 docs_site = "https://devan.gg"
-docs_base = "/bookmark"
+docs_base = "/aliases"
