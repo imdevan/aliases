@@ -79,7 +79,6 @@ Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for con
 |------|------|-------------|
 | -i, --interactive | bool | interactive bookmark browser |
 | -a, --add | bool | interactive add bookmark form |
-| -e, --edit | bool | open bookmarks file in editor |
 | -y, --yes | bool | skip confirmation, and interactive prompts |
 
 ### meta
@@ -99,6 +98,7 @@ Creates a shell alias `foo` that uses `~/foo/local-bookmark-config.toml` for con
 - [`config`](/commands/config) - View or edit configuration
 - [`config-init`](/commands/config-init) - Generate a default config file
 - [`delete`](/commands/delete) - Delete a bookmark
+- [`edit`](/commands/edit) - Edit a bookmark or open bookmarks file in editor
 - [`list`](/commands/list) - List all bookmarks
 
 ## Source

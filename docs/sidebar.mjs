@@ -34,6 +34,7 @@ const sidebar = [
       ],
     },
     { label: 'delete', link: '/commands/delete' },
+    { label: 'edit', link: '/commands/edit' },
     { label: 'list', link: '/commands/list' },
 
   ] },
