@@ -27,7 +27,7 @@ _install-pack:
 # ================================================================================
 
 build:
-	go build -o {{PACKAGE_BIN}} {{PACKAGE_CMD}}
+	go build -ldflags="-s -w" -o {{PACKAGE_BIN}} {{PACKAGE_CMD}} 
 	@size=$(stat -c %s {{PACKAGE_BIN}} 2>/dev/null || stat -f %z {{cli_pack}} 2>/dev/null); \
 	echo "Build size: $(awk "BEGIN {printf \"%.2f MB\", $size/1048576}")"
 
