@@ -6,7 +6,6 @@
 
 - **alias file** — default storage at `~/.aliases/aliases.zsh`; where `am add` writes new aliases
 - **index folders** — user-defined glob patterns of dirs to scan for alias files (e.g. `~/dotfiles`)
-- **db** — sqlite index for fast search across all indexed aliases
 - **wrapper function** — shell function sourced by user's rc file; re-sources alias file after add/edit/delete and handles `am` output (e.g. copy to clipboard)
 
 # v0.1.0
@@ -14,11 +13,15 @@
 ## Feature 1: Simplify
 At it's core aliases is a simpler version of `bookmark`.
 - [ ] 1.1 rename bookmark / bm to aliases / al 
+- [ ] 1.2 remove directory, file, and tmux rename flags. 
+- the bookmark script becomes the alias value
+- alias is only name, value, description. 
+- aliases add name value description
 
 
 ## Feature 2: Project bootstrap
-  - [ ] 2.1 Set up `cmd/aliases` entrypoint and wire cobra root command
-  - [ ] 2.2 Define domain types: `Alias` (name, value, description, source file)
+  - [x] 2.1 Set up `cmd/aliases` entrypoint and wire cobra root command
+  - [ ] 2.2 Define domain types: `Alias` (name, value, description, source file) simplify bookmark
   - [ ] 2.3 Config scaffold: `~/.config/aliases/config.toml`, options: `shell`, `alias_file`, `index_folders`, `cache_interval`, `script_icons`
 
 ## Feature 3: Alias storage
@@ -29,8 +32,6 @@ At it's core aliases is a simpler version of `bookmark`.
 ## Feature 4: `am add`
   - [ ] 4.1 Same as bookmark but simpler
   - [ ] 4.2 Write to alias file
-  - [ ] 4.3 Trigger db re-index after write
-
 ## Feature 5: `am edit`
   - [ ] 5.1 Same as bookmark but simpler
   - [ ] 5.2 Pre-fill form with current values
@@ -39,7 +40,6 @@ At it's core aliases is a simpler version of `bookmark`.
 ## Feature 6: `am delete`
   - [ ] 6.1 Same as bookmark 
   - [ ] 6.2 Confirm prompt
-  - [ ] 6.3 Remove from source file, update db
 
 ## Feature 7: `am` (interactive list)
   - [ ] 7.1 Same as bookmark but simpler
