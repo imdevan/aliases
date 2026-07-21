@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/adapters/tty"
 	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
@@ -72,43 +70,5 @@ func runEditCommand(cmd *cobra.Command, args []string, opts *editOptions, cfg do
 		m = m.WithTitle(fmt.Sprintf("'%s' Not Found, Add Alias", name))
 	}
 
-	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
-	p := tea.NewProgram(m, progOpts...)
-	result, err := p.Run()
-	if err != nil {
-		return err
-	}
-
-	fm, ok := result.(ui.AliasFormModel)
-	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.CanceledMessage(theme, "Edit"))
-		return nil
-	}
-
-	newName, newValue, newDesc := fm.Values()
-
-	// If the name changed and we are editing an existing one, delete the old one
-	if exists && newName != name {
-		if err := aliasManager.Delete(name); err != nil {
-			return err
-		}
-	}
-
-	newAl := domain.Alias{
-		Name:        newName,
-		Value:       newValue,
-		Description: newDesc,
-		SourceFile:  al.SourceFile,
-	}
-
-	if err := aliasManager.Add(newAl); err != nil {
-		return err
-	}
-
-	action := "created"
-	if exists {
-		action = "updated"
-	}
-	printSuccess(cfg, action, newName, newValue)
-	return nil
+	return runAliasFormWorkflow(cmd, cfg, aliasManager, m, al, exists, true, "Edit")
 }

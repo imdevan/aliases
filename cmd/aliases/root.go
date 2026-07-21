@@ -200,6 +200,29 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 	theme := ui.ThemeFromConfig(cfg)
 	m := ui.NewAliasFormModel(theme, defaultName, "cd "+cwd)
 
+	initialAlias := domain.Alias{
+		Name:  defaultName,
+		Value: "cd " + cwd,
+	}
+
+	exists, err := aliasManager.Exists(defaultName)
+	if err != nil {
+		return err
+	}
+
+	return runAliasFormWorkflow(cmd, cfg, aliasManager, m, initialAlias, exists, false, "Add")
+}
+
+func runAliasFormWorkflow(
+	cmd *cobra.Command,
+	cfg domain.Config,
+	aliasManager *alias.Manager,
+	m ui.AliasFormModel,
+	initialAlias domain.Alias,
+	exists bool,
+	isEdit bool,
+	cancelAction string,
+) error {
 	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
 	p := tea.NewProgram(m, progOpts...)
 	result, err := p.Run()
@@ -209,26 +232,38 @@ func runAddForm(cmd *cobra.Command, opts *rootOptions, cfg domain.Config, cwd st
 
 	fm, ok := result.(ui.AliasFormModel)
 	if !ok || !fm.IsCompleted() {
-		fmt.Println(ui.CanceledMessage(theme, "Add"))
+		theme := ui.ThemeFromConfig(cfg)
+		cmd.Println(ui.CanceledMessage(theme, cancelAction))
 		return nil
 	}
 
 	fName, fValue, fDesc := fm.Values()
-	al := domain.Alias{
-		Name:        fName,
-		Value:       fValue,
-		Description: fDesc,
+
+	// If the name changed and we are editing an existing one, delete the old one
+	if exists && isEdit && fName != initialAlias.Name {
+		if err := aliasManager.Delete(initialAlias.Name); err != nil {
+			return err
+		}
 	}
 
-	exists, err := aliasManager.Exists(fName)
+	alreadyExists, err := aliasManager.Exists(fName)
 	if err != nil {
 		return err
 	}
-	if err := aliasManager.Add(al); err != nil {
+
+	newAl := domain.Alias{
+		Name:        fName,
+		Value:       fValue,
+		Description: fDesc,
+		SourceFile:  initialAlias.SourceFile,
+	}
+
+	if err := aliasManager.Add(newAl); err != nil {
 		return err
 	}
+
 	action := "created"
-	if exists {
+	if alreadyExists {
 		action = "updated"
 	}
 	printSuccess(cfg, action, fName, fValue)

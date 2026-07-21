@@ -12,6 +12,7 @@ import (
 
 	"github.com/aliases/internal/adapters/shell"
 	"github.com/aliases/internal/domain"
+	"github.com/aliases/internal/utils"
 )
 
 var (
@@ -95,7 +96,7 @@ func NewManager(filePath string, shellType string, functionAlias string, interac
 // Load reads all aliases from the default alias file and any index folders.
 func (m *Manager) Load() ([]domain.Alias, error) {
 	var allAliases []domain.Alias
-	
+
 	// 1. Load from default alias file
 	if _, err := os.Stat(m.filePath); err == nil {
 		data, err := os.ReadFile(m.filePath)
@@ -108,7 +109,7 @@ func (m *Manager) Load() ([]domain.Alias, error) {
 		}
 		allAliases = append(allAliases, aliases...)
 	}
-	
+
 	// 2. Load from index folders
 	for _, pattern := range m.indexFolders {
 		matches, err := filepath.Glob(expandPath(pattern))
@@ -134,7 +135,7 @@ func (m *Manager) Load() ([]domain.Alias, error) {
 			}
 		}
 	}
-	
+
 	return allAliases, nil
 }
 
@@ -165,18 +166,18 @@ func parseAliasLine(line, shellType string) (name, value, description string, ok
 	if !strings.HasPrefix(line, "alias ") {
 		return "", "", "", false
 	}
-	
+
 	content := strings.TrimPrefix(line, "alias ")
 	content = strings.TrimSpace(content)
-	
+
 	parts := strings.SplitN(content, "=", 2)
 	if len(parts) != 2 {
 		return "", "", "", false
 	}
-	
+
 	name = strings.TrimSpace(parts[0])
 	rightSide := strings.TrimSpace(parts[1])
-	
+
 	var val, desc string
 	if len(rightSide) > 0 && (rightSide[0] == '\'' || rightSide[0] == '"') {
 		quoteChar := rightSide[0]
@@ -196,11 +197,11 @@ func parseAliasLine(line, shellType string) (name, value, description string, ok
 				break
 			}
 		}
-		
+
 		if closingIdx != -1 {
 			rawVal := rightSide[1:closingIdx]
 			val = strings.ReplaceAll(rawVal, "\\"+string(quoteChar), string(quoteChar))
-			
+
 			afterQuote := rightSide[closingIdx+1:]
 			if hashIdx := strings.Index(afterQuote, "#"); hashIdx != -1 {
 				desc = strings.TrimSpace(afterQuote[hashIdx+1:])
@@ -216,7 +217,7 @@ func parseAliasLine(line, shellType string) (name, value, description string, ok
 			val = rightSide
 		}
 	}
-	
+
 	return name, val, desc, true
 }
 
@@ -256,18 +257,18 @@ func (m *Manager) generateShellScript(aliases []domain.Alias) error {
 }
 
 func (m *Manager) formatSingleAlias(al domain.Alias) string {
-	escapedVal := strings.ReplaceAll(al.Value, "'", "'\\''")
+	escapedVal := utils.EscapeAliasValue(al.Value)
 	switch m.shell {
 	case "nu", "nushell":
 		if al.Description != "" {
-			return fmt.Sprintf("alias %s = %s # %s\n", al.Name, al.Value, al.Description)
+			return fmt.Sprintf("alias %s = \"%s\" # %s\n", al.Name, escapedVal, al.Description)
 		}
-		return fmt.Sprintf("alias %s = %s\n", al.Name, al.Value)
+		return fmt.Sprintf("alias %s = \"%s\"\n", al.Name, escapedVal)
 	default:
 		if al.Description != "" {
-			return fmt.Sprintf("alias %s='%s' # %s\n", al.Name, escapedVal, al.Description)
+			return fmt.Sprintf("alias %s=\"%s\" # %s\n", al.Name, escapedVal, al.Description)
 		}
-		return fmt.Sprintf("alias %s='%s'\n", al.Name, escapedVal)
+		return fmt.Sprintf("alias %s=\"%s\"\n", al.Name, escapedVal)
 	}
 }
 
@@ -391,7 +392,7 @@ func (m *Manager) Exists(name string) (bool, error) {
 
 func (m *Manager) writeAliasToFile(targetFile string, al domain.Alias, isDelete bool) error {
 	targetFile = expandPath(targetFile)
-	
+
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(targetFile), 0o755); err != nil {
 		return err
@@ -480,40 +481,5 @@ func expandPath(value string) string {
 }
 
 func GenerateAlias(path string, separator string, lowercase bool, partLength int) string {
-	cleaned := filepath.Clean(path)
-	base := filepath.Base(cleaned)
-	if base == "/" || base == "." {
-		return "h"
-	}
-	
-	var parts []string
-	if separator != "" {
-		parts = strings.Split(base, separator)
-	} else {
-		if strings.Contains(base, "-") {
-			parts = strings.Split(base, "-")
-		} else if strings.Contains(base, "_") {
-			parts = strings.Split(base, "_")
-		} else {
-			parts = []string{base}
-		}
-	}
-	
-	var aliasParts []string
-	for _, part := range parts {
-		if len(part) == 0 {
-			continue
-		}
-		length := partLength
-		if length > len(part) {
-			length = len(part)
-		}
-		aliasParts = append(aliasParts, part[:length])
-	}
-	
-	alias := strings.Join(aliasParts, separator)
-	if lowercase {
-		alias = strings.ToLower(alias)
-	}
-	return alias
+	return utils.GenerateAlias(path, separator, lowercase, partLength)
 }

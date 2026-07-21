@@ -114,8 +114,61 @@ func TestManager_IndexFolders(t *testing.T) {
 		t.Fatalf("failed to read custom file: %v", err)
 	}
 	
-	expectedContent := "alias custom='echo updated' # custom description\n"
+	expectedContent := "alias custom=\"echo updated\" # custom description\n"
 	if string(data) != expectedContent {
 		t.Errorf("custom file content = %q, want %q", string(data), expectedContent)
 	}
 }
+
+func TestManager_FormatSingleAlias(t *testing.T) {
+	tests := []struct {
+		name       string
+		shell      string
+		alias      domain.Alias
+		wantFormat string
+	}{
+		{
+			name:  "bash simple no quotes",
+			shell: "bash",
+			alias: domain.Alias{Name: "t1", Value: "echo hi"},
+			wantFormat: "alias t1=\"echo hi\"\n",
+		},
+		{
+			name:  "bash with double quotes in value",
+			shell: "bash",
+			alias: domain.Alias{Name: "t1", Value: `echo "hi"`},
+			wantFormat: "alias t1=\"echo 'hi'\"\n",
+		},
+		{
+			name:  "bash with single quotes in value",
+			shell: "bash",
+			alias: domain.Alias{Name: "t1", Value: "echo 'hi'"},
+			wantFormat: "alias t1=\"echo 'hi'\"\n",
+		},
+		{
+			name:  "bash with description",
+			shell: "bash",
+			alias: domain.Alias{Name: "t1", Value: "echo hi", Description: "simple test"},
+			wantFormat: "alias t1=\"echo hi\" # simple test\n",
+		},
+		{
+			name:  "nushell with double quotes in value",
+			shell: "nushell",
+			alias: domain.Alias{Name: "t1", Value: `echo "hi"`, Description: "nu test"},
+			wantFormat: "alias t1 = \"echo 'hi'\" # nu test\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			filePath := filepath.Join(tmpDir, "aliases.sh")
+			m := NewManager(filePath, tt.shell, "false", "false", nil)
+			got := m.formatSingleAlias(tt.alias)
+			if got != tt.wantFormat {
+				t.Errorf("formatSingleAlias() = %q, want %q", got, tt.wantFormat)
+			}
+		})
+	}
+}
+

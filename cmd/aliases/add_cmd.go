@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/adapters/tty"
 	"github.com/aliases/internal/alias"
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
@@ -83,48 +81,28 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 	}
 
 	theme := ui.ThemeFromConfig(cfg)
-	var m ui.AliasFormModel
+	var initialAlias domain.Alias
+	var isPrefilled bool
 	if name != "" || value != "" || description != "" {
-		m = ui.NewAliasFormModelEdit(theme, domain.Alias{
+		initialAlias = domain.Alias{
 			Name:        name,
 			Value:       value,
 			Description: description,
-		}).WithTitle("Add Alias")
+		}
+		isPrefilled = true
+	}
+
+	exists, err := aliasManager.Exists(initialAlias.Name)
+	if err != nil {
+		return err
+	}
+
+	var m ui.AliasFormModel
+	if isPrefilled {
+		m = ui.NewAliasFormModelEdit(theme, initialAlias).WithTitle("Add Alias")
 	} else {
 		m = ui.NewAliasFormModel(theme, "", "").WithTitle("Add Alias")
 	}
 
-	progOpts := tty.GetProgramOptions(tea.WithoutSignalHandler())
-	p := tea.NewProgram(m, progOpts...)
-	result, err := p.Run()
-	if err != nil {
-		return err
-	}
-
-	fm, ok := result.(ui.AliasFormModel)
-	if !ok || !fm.IsCompleted() {
-		cmd.Println(ui.CanceledMessage(theme, "Add"))
-		return nil
-	}
-
-	fName, fValue, fDesc := fm.Values()
-	alItem := domain.Alias{
-		Name:        fName,
-		Value:       fValue,
-		Description: fDesc,
-	}
-
-	exists, err := aliasManager.Exists(alItem.Name)
-	if err != nil {
-		return err
-	}
-	if err := aliasManager.Add(alItem); err != nil {
-		return err
-	}
-	action := "created"
-	if exists {
-		action = "updated"
-	}
-	printSuccess(cfg, action, alItem.Name, alItem.Value)
-	return nil
+	return runAliasFormWorkflow(cmd, cfg, aliasManager, m, initialAlias, exists, false, "Add")
 }
