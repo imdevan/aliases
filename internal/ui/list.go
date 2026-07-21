@@ -81,6 +81,9 @@ func NewListDelegate(theme Theme, opts ListDelegateOptions) list.ItemDelegate {
 	if opts.ShowMetadata {
 		return newMetadataDelegate(theme, opts)
 	}
+	if opts.Spacing == "compact" {
+		return newCompactDelegate(theme, opts)
+	}
 	
 	// Otherwise use default delegate
 	return newDefaultDelegate(theme, opts)
@@ -278,3 +281,82 @@ func (w *metadataItemWrapper) Description() string {
 func (w *metadataItemWrapper) FilterValue() string {
 	return w.item.FilterValue()
 }
+
+// compactDelegate wraps default delegate for compact spacing and displays script at end of row.
+type compactDelegate struct {
+	defaultDelegate list.DefaultDelegate
+	theme           Theme
+}
+
+func newCompactDelegate(theme Theme, opts ListDelegateOptions) *compactDelegate {
+	delegate := newDefaultDelegate(theme, opts)
+	delegate.ShowDescription = false
+	delegate.SetHeight(1)
+	delegate.SetSpacing(0)
+	return &compactDelegate{
+		defaultDelegate: delegate,
+		theme:           theme,
+	}
+}
+
+func (d *compactDelegate) Height() int {
+	return d.defaultDelegate.Height()
+}
+
+func (d *compactDelegate) Spacing() int {
+	return d.defaultDelegate.Spacing()
+}
+
+func (d *compactDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return d.defaultDelegate.Update(msg, m)
+}
+
+func (d *compactDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	defaultItem, ok := item.(list.DefaultItem)
+	if !ok {
+		d.defaultDelegate.Render(w, m, index, item)
+		return
+	}
+
+	script := defaultItem.Description()
+	if script == "" {
+		d.defaultDelegate.Render(w, m, index, item)
+		return
+	}
+
+	mutedStyle := lipgloss.NewStyle().Foreground(d.theme.Muted)
+	if index == m.Index() {
+		mutedStyle = lipgloss.NewStyle().Foreground(d.theme.DescriptionHighlight)
+	}
+
+	wrapper := &compactItemWrapper{
+		item:       defaultItem,
+		script:     script,
+		mutedStyle: mutedStyle,
+	}
+	d.defaultDelegate.Render(w, m, index, wrapper)
+}
+
+type compactItemWrapper struct {
+	item       list.DefaultItem
+	script     string
+	mutedStyle lipgloss.Style
+}
+
+func (w *compactItemWrapper) Title() string {
+	title := w.item.Title()
+	if w.script == "" {
+		return title
+	}
+	return title + "  " + w.mutedStyle.Render(w.script)
+}
+
+func (w *compactItemWrapper) Description() string {
+	return ""
+}
+
+func (w *compactItemWrapper) FilterValue() string {
+	return w.item.FilterValue()
+}
+
+

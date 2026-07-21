@@ -151,20 +151,18 @@ func TestNewListDelegate(t *testing.T) {
 	t.Run("compact spacing", func(t *testing.T) {
 		opts := ListDelegateOptions{Spacing: "compact"}
 		delegate := NewListDelegate(theme, opts)
-		
-		dd, ok := delegate.(list.DefaultDelegate)
-		if !ok {
-			t.Fatal("Expected DefaultDelegate for non-metadata options")
+
+		if delegate.Height() != 1 {
+			t.Errorf("Height = %d, want 1 for compact spacing", delegate.Height())
+		}
+		if delegate.Spacing() != 0 {
+			t.Errorf("Spacing = %d, want 0 for compact spacing", delegate.Spacing())
 		}
 
-		if dd.ShowDescription {
-			t.Error("ShowDescription should be false for compact spacing")
-		}
-		if dd.Height() != 1 {
-			t.Errorf("Height = %d, want 1 for compact spacing", dd.Height())
-		}
-		if dd.Spacing() != 0 {
-			t.Errorf("Spacing = %d, want 0 for compact spacing", dd.Spacing())
+		item := testItem{title: "my-alias", desc: "echo hello"}
+		wrapper := compactItemWrapper{item: item, script: item.Description(), mutedStyle: lipgloss.NewStyle()}
+		if wrapper.Title() != "my-alias  echo hello" {
+			t.Errorf("wrapper.Title() = %q, want %q", wrapper.Title(), "my-alias  echo hello")
 		}
 	})
 
