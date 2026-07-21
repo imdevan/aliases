@@ -53,3 +53,17 @@ At it's core aliases is a simpler version of `bookmark`.
   - [x] 9.1 `am config` — show current config
   - [x] 9.2 `am config init` — interactive setup: shell, alias file path, index folders
 
+
+## Feature 10: alias gen function refactor
+- [x] 10.1 update alias gen function to use double quotes 
+- alias name = "value" # description
+- [x] 10.2 create util function for generating alias name
+- [x] 10.3 create util function for escaping alias name
+- example
+```bash
+aliases add t1 "echo hi" -> no change
+aliases add t1 'echo "hi"' -> "echo 'hi'"
+aliases add t1 "echo 'hi'" -> no change
+```
+- [x] 10.4 share as much logic as possible between add and edit
+
