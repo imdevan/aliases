@@ -13,16 +13,18 @@ import (
 	"github.com/aliases/internal/flags"
 	"github.com/aliases/internal/index"
 	"github.com/aliases/internal/ui"
+	"github.com/aliases/internal/utils"
 )
 
 func newSearchCmd() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
-		Use:   "search [query]",
-		Short: "Search aliases in the index",
-		Long:  "Search the SQLite alias index by name, value, or description.",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "search [query]",
+		Aliases: []string{"find", "s"},
+		Short:   "Search aliases in the index",
+		Long:    "Search the SQLite alias index by name, value, or description.",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -92,6 +94,9 @@ func printGroupedAliases(cmd *cobra.Command, aliases []domain.Alias, cfg domain.
 	for _, a := range aliases {
 		src := a.SourceFile
 		if src == "" {
+			src = cfg.ResolvedAliasFile()
+		}
+		if src == "" {
 			src = "(unknown)"
 		}
 		if _, exists := groups[src]; !exists {
@@ -110,8 +115,9 @@ func printGroupedAliases(cmd *cobra.Command, aliases []domain.Alias, cfg domain.
 		}
 		first = false
 
+		displayLocation := utils.ReplaceHomeDir(src, cfg.HomeIcon)
 		// Print source header.
-		cmd.Println(mutedStyle.Render(fmt.Sprintf("─── %s", src)))
+		cmd.Println(mutedStyle.Render(fmt.Sprintf("─── %s", displayLocation)))
 
 		group := groups[src]
 

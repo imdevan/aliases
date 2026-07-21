@@ -483,3 +483,23 @@ func expandPath(value string) string {
 func GenerateAlias(path string, separator string, lowercase bool, partLength int) string {
 	return utils.GenerateAlias(path, separator, lowercase, partLength)
 }
+
+// FindAliasLine scans a file for an alias definition and returns its 1-based line number, or 0 if not found.
+func FindAliasLine(filePath, name, shellType string) int {
+	if filePath == "" {
+		return 0
+	}
+	realPath := expandPath(filePath)
+	data, err := os.ReadFile(realPath)
+	if err != nil {
+		return 0
+	}
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		n, _, _, ok := parseAliasLine(line, shellType)
+		if ok && n == name {
+			return i + 1
+		}
+	}
+	return 0
+}

@@ -172,3 +172,37 @@ func TestManager_FormatSingleAlias(t *testing.T) {
 	}
 }
 
+func TestFindAliasLine(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "aliases.zsh")
+	content := `# Header comment
+alias gs="git status" # status
+alias ga="git add"
+
+alias gc="git commit"
+`
+	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		aliasName string
+		wantLine  int
+	}{
+		{"find gs on line 2", "gs", 2},
+		{"find ga on line 3", "ga", 3},
+		{"find gc on line 5", "gc", 5},
+		{"nonexistent alias", "nonexistent", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FindAliasLine(filePath, tt.aliasName, "zsh")
+			if got != tt.wantLine {
+				t.Errorf("FindAliasLine(%s) = %d, want %d", tt.aliasName, got, tt.wantLine)
+			}
+		})
+	}
+}
+

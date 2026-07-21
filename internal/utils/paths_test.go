@@ -114,3 +114,23 @@ func TestConfigPathLocal(t *testing.T) {
 		t.Errorf("ConfigPathLocal(%q) = %q, should end with config.toml", cwd, got)
 	}
 }
+
+func TestReplaceHomeDir(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		t.Skip("UserHomeDir not available")
+	}
+
+	subPath := filepath.Join(home, ".aliases", "aliases.zsh")
+	replaced := ReplaceHomeDir(subPath, "~")
+	expected := filepath.Join("~", ".aliases", "aliases.zsh")
+	if replaced != expected {
+		t.Errorf("ReplaceHomeDir(%q) = %q, want %q", subPath, replaced, expected)
+	}
+
+	customIcon := ReplaceHomeDir(subPath, "🏠")
+	expectedIcon := filepath.Join("🏠", ".aliases", "aliases.zsh")
+	if customIcon != expectedIcon {
+		t.Errorf("ReplaceHomeDir(%q) = %q, want %q", subPath, customIcon, expectedIcon)
+	}
+}

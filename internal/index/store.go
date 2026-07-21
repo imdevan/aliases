@@ -193,8 +193,24 @@ func (s *Store) BulkUpsert(aliases []domain.Alias, source string, mtime int64, g
 }
 
 // Search finds aliases matching a query string (case-insensitive substring match
-// across name, value, and description).
+// across name, value, and description; if query ends with '=', performs exact name match).
 func (s *Store) Search(query string) ([]domain.Alias, error) {
+	if strings.HasSuffix(query, "=") {
+		exactName := strings.TrimSuffix(query, "=")
+		rows, err := s.db.Query(`
+			SELECT name, value, description, source, global, suffix
+			FROM aliases
+			WHERE name = ?
+			ORDER BY name ASC
+		`, exactName)
+		if err != nil {
+			return nil, fmt.Errorf("index: search exact: %w", err)
+		}
+		defer rows.Close()
+
+		return scanAliases(rows)
+	}
+
 	pattern := "%" + query + "%"
 	rows, err := s.db.Query(`
 		SELECT name, value, description, source, global, suffix

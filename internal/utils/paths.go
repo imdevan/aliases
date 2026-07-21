@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aliases/internal/package"
 )
@@ -41,4 +42,23 @@ func xdgHome(envKey, fallbackSuffix string) string {
 		return ""
 	}
 	return filepath.Join(home, fallbackSuffix)
+}
+
+// ReplaceHomeDir replaces the user's home directory prefix with homeIcon or "~".
+func ReplaceHomeDir(path, homeIcon string) string {
+	if homeIcon == "" {
+		homeIcon = "~"
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+	if path == home {
+		return homeIcon
+	}
+	prefix := home + string(filepath.Separator)
+	if strings.HasPrefix(path, prefix) {
+		return homeIcon + string(filepath.Separator) + strings.TrimPrefix(path, prefix)
+	}
+	return path
 }

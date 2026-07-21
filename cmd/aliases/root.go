@@ -19,6 +19,7 @@ import (
 	"github.com/aliases/internal/config"
 	"github.com/aliases/internal/domain"
 	"github.com/aliases/internal/flags"
+	"github.com/aliases/internal/index"
 	pkg "github.com/aliases/internal/package"
 	"github.com/aliases/internal/ui"
 )
@@ -274,9 +275,24 @@ func runAliasFormWorkflow(
 
 func runInteractive(cmd *cobra.Command, opts *rootOptions, cfg domain.Config) error {
 	aliasManager := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
-	aliases, err := aliasManager.Load()
-	if err != nil {
-		return err
+
+	var aliases []domain.Alias
+	store, err := index.NewStore()
+	if err == nil {
+		defer store.Close()
+		indexer := index.NewIndexer(store, cfg)
+		if indexer.NeedsRefresh() {
+			indexer.Refresh()
+		}
+		aliases, _ = store.All()
+	}
+
+	if len(aliases) == 0 {
+		var loadErr error
+		aliases, loadErr = aliasManager.Load()
+		if loadErr != nil {
+			return loadErr
+		}
 	}
 
 	if len(aliases) == 0 {
@@ -370,7 +386,7 @@ func (a aliasItem) Description() string {
 }
 
 func (a aliasItem) FilterValue() string {
-	return a.Alias.Name + " " + a.Alias.Value + " " + a.Alias.Description
+	return a.Alias.Name + " " + a.Alias.Value + " " + a.Alias.Description + " " + a.Alias.SourceFile
 }
 
 type aliasListModel struct {
@@ -392,6 +408,10 @@ type aliasListModel struct {
 	pendingBookmark *domain.Alias
 	screenW         int
 	screenH         int
+}
+
+type editorFinishedMsg struct {
+	err error
 }
 
 func (m *aliasListModel) updateTitle() {
@@ -431,6 +451,10 @@ func (m aliasListModel) allHelpKeys() []key.Binding {
 		key.NewBinding(
 			key.WithKeys("e"),
 			key.WithHelp("e", "edit alias"),
+		),
+		key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "open at location"),
 		),
 		key.NewBinding(
 			key.WithKeys("d"),
@@ -642,6 +666,15 @@ func (m aliasListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case editorFinishedMsg:
+		if msg.err != nil {
+			m.message = fmt.Sprintf("✗ Editor error: %s", msg.err)
+		} else {
+			m.reloadList()
+			m.message = "✓ Updated from editor"
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.screenW = msg.Width
 		m.screenH = msg.Height
@@ -661,7 +694,7 @@ func (m aliasListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					fmt.Println(item.Alias.Value)
 					return m, tea.Quit
 				}
-			case "e", "n", "d", "D", "a":
+			case "e", "n", "d", "D", "a", "o":
 				var cmd tea.Cmd
 				m.list, cmd = m.list.Update(msg)
 				return m, cmd
@@ -715,6 +748,29 @@ func (m aliasListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				return m, formModel.Init()
+			}
+		case "o":
+			if item, ok := m.list.SelectedItem().(aliasItem); ok {
+				src := item.Alias.SourceFile
+				if src == "" {
+					src = m.config.ResolvedAliasFile()
+				}
+				if src == "" {
+					m.message = "✗ No location found for alias"
+					return m, nil
+				}
+
+				line := alias.FindAliasLine(src, item.Alias.Name, m.config.Shell)
+				editorAdapter := editor.New(m.config.Editor)
+				c, err := editorAdapter.BuildCmd(src, line)
+				if err != nil {
+					m.message = fmt.Sprintf("✗ %s", err)
+					return m, nil
+				}
+
+				return m, tea.ExecProcess(c, func(err error) tea.Msg {
+					return editorFinishedMsg{err: err}
+				})
 			}
 		case "d":
 			if item, ok := m.list.SelectedItem().(aliasItem); ok {
@@ -787,8 +843,20 @@ func (m aliasListModel) View() string {
 }
 
 func (m *aliasListModel) reloadList() {
-	aliases, err := m.manager.Load()
+	var aliases []domain.Alias
+	store, err := index.NewStore()
 	if err == nil {
+		defer store.Close()
+		indexer := index.NewIndexer(store, m.config)
+		if indexer.NeedsRefresh() {
+			indexer.Refresh()
+		}
+		aliases, _ = store.All()
+	}
+	if len(aliases) == 0 {
+		aliases, _ = m.manager.Load()
+	}
+	if len(aliases) > 0 {
 		sortAliases(aliases, m.config.DefaultSortBy)
 		items := make([]list.Item, 0, len(aliases))
 		for _, b := range aliases {
