@@ -13,17 +13,11 @@
   - [x] 8.3 Output matching aliases (name, value, description,location [grouped by file])
   - [x] 8.4 update interactive list to populate and search against sql index as well
 
-## Feature 11: Index folders
-  - [ ] 11.1 Support glob patterns in `index_folders` config
-  - [ ] 11.2 Scan matched files, merge aliases into db with source attribution
-  - [ ] 11.3 Edit/delete aliases in indexed (non-default) files
-# v0.2.0
-
-## Feature 10: `script_icons` display
-  - [ ] 10.1 Detect tokens in alias value and map to devicons
-  - [ ] 10.2 Show icon in list view next to alias value
+## Feature 9: `script_icons` display
+  - [ ] 9.1 Detect tokens in alias value and map to devicons
+  - [ ] 9.2 Show icon in list view next to alias value
 
 
-## Feature 12: View modes
-  - [ ] 12.1 Config option to select list style: stacked, tight, table, grouped
-  - [ ] 12.2 Implement grouped view (group by common prefix or tag)
+## Feature 11: View modes
+  - [ ] 11.1 Config option to select list style: stacked, tight, table, grouped
+  - [ ] 11.2 Implement grouped view (group by common prefix or tag)
