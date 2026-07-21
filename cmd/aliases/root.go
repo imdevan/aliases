@@ -96,6 +96,8 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newImportCmd())
 	cmd.AddCommand(newConfigCmd())
+	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newIndexCmd())
 	cmd.AddCommand(newCompletionCmd())
 
 	return cmd

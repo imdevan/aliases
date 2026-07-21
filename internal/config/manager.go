@@ -85,32 +85,32 @@ func (m *ManagerImpl) Exists() (bool, error) {
 }
 
 type partialConfig struct {
-	Editor               *string `toml:"editor"`
-	Primary              *string `toml:"primary"`
-	Secondary            *string `toml:"secondary"`
-	Headings             *string `toml:"headings"`
-	Text                 *string `toml:"text"`
-	TextHighlight        *string `toml:"text_highlight"`
-	DescriptionHighlight *string `toml:"description_highlight"`
-	Tags                 *string `toml:"tags"`
-	Flags                *string `toml:"flags"`
-	Muted                *string `toml:"muted"`
-	Accent               *string `toml:"accent"`
-	Border               *string `toml:"border"`
-	Error                *string `toml:"error"`
-	Success              *string `toml:"success"`
-	InteractiveDefault   *bool   `toml:"interactive_default"`
-	PlainText            *bool     `toml:"plain_text"`
-	ConfirmDelete        *bool     `toml:"confirm_delete"`
-	ListSpacing          *string   `toml:"list_spacing"`
-	AliasFile            *string   `toml:"alias_file"`
-	IndexFolders         *[]string `toml:"index_folders"`
-	CacheInterval        *int      `toml:"cache_interval"`
-	Shell                *string   `toml:"shell"`
-	AutoAliasSeparator   *string   `toml:"auto_alias_separator"`
-	AutoAliasLowercase   *bool     `toml:"auto_alias_lowercase"`
-	HomeIcon             *string   `toml:"home_icon"`
-	DefaultSortBy        *string   `toml:"default_sort_by"`
+	Editor               *string     `toml:"editor"`
+	Primary              *string     `toml:"primary"`
+	Secondary            *string     `toml:"secondary"`
+	Headings             *string     `toml:"headings"`
+	Text                 *string     `toml:"text"`
+	TextHighlight        *string     `toml:"text_highlight"`
+	DescriptionHighlight *string     `toml:"description_highlight"`
+	Tags                 *string     `toml:"tags"`
+	Flags                *string     `toml:"flags"`
+	Muted                *string     `toml:"muted"`
+	Accent               *string     `toml:"accent"`
+	Border               *string     `toml:"border"`
+	Error                *string     `toml:"error"`
+	Success              *string     `toml:"success"`
+	InteractiveDefault   *bool       `toml:"interactive_default"`
+	PlainText            *bool       `toml:"plain_text"`
+	ConfirmDelete        *bool       `toml:"confirm_delete"`
+	ListSpacing          *string     `toml:"list_spacing"`
+	AliasFile            *string     `toml:"alias_file"`
+	IndexFolders         interface{} `toml:"index_folders"`
+	CacheInterval        *int        `toml:"cache_interval"`
+	Shell                *string     `toml:"shell"`
+	AutoAliasSeparator   *string     `toml:"auto_alias_separator"`
+	AutoAliasLowercase   *bool       `toml:"auto_alias_lowercase"`
+	HomeIcon             *string     `toml:"home_icon"`
+	DefaultSortBy        *string     `toml:"default_sort_by"`
 }
 
 func readConfig(path string) (*partialConfig, error) {
@@ -187,7 +187,20 @@ func applyPartial(config *domain.Config, partial *partialConfig) {
 		config.AliasFile = expandPath(*partial.AliasFile)
 	}
 	if partial.IndexFolders != nil {
-		config.IndexFolders = *partial.IndexFolders
+		switch v := partial.IndexFolders.(type) {
+		case string:
+			config.IndexFolders = []string{v}
+		case []interface{}:
+			var folders []string
+			for _, elem := range v {
+				if str, ok := elem.(string); ok {
+					folders = append(folders, str)
+				}
+			}
+			config.IndexFolders = folders
+		case []string:
+			config.IndexFolders = v
+		}
 	}
 	if partial.CacheInterval != nil {
 		config.CacheInterval = *partial.CacheInterval

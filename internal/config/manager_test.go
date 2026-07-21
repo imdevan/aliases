@@ -373,3 +373,49 @@ func TestManagerBooleanOverrides(t *testing.T) {
 		t.Error("expected interactive_default to be false from config")
 	}
 }
+
+func TestManagerIndexFoldersTOML(t *testing.T) {
+	t.Run("single string index_folders", func(t *testing.T) {
+		root := t.TempDir()
+		cwd := filepath.Join(root, "project")
+		_ = os.MkdirAll(cwd, 0o755)
+		t.Setenv("XDG_CONFIG_HOME", filepath.Join(root, "config"))
+
+		configPath := utils.ConfigPathGlobal()
+		_ = os.MkdirAll(filepath.Dir(configPath), 0o755)
+
+		data := []byte("index_folders = \"~/dotfiles/*.zsh\"\n")
+		_ = os.WriteFile(configPath, data, 0o644)
+
+		manager := NewManager(cwd)
+		cfg, err := manager.Load()
+		if err != nil {
+			t.Fatalf("Load single string index_folders: %v", err)
+		}
+		if len(cfg.IndexFolders) != 1 || cfg.IndexFolders[0] != "~/dotfiles/*.zsh" {
+			t.Errorf("unexpected index_folders: %+v", cfg.IndexFolders)
+		}
+	})
+
+	t.Run("array string index_folders", func(t *testing.T) {
+		root := t.TempDir()
+		cwd := filepath.Join(root, "project")
+		_ = os.MkdirAll(cwd, 0o755)
+		t.Setenv("XDG_CONFIG_HOME", filepath.Join(root, "config"))
+
+		configPath := utils.ConfigPathGlobal()
+		_ = os.MkdirAll(filepath.Dir(configPath), 0o755)
+
+		data := []byte("index_folders = [\"~/dotfiles/*.zsh\", \"!~/dotfiles/ignored.zsh\"]\n")
+		_ = os.WriteFile(configPath, data, 0o644)
+
+		manager := NewManager(cwd)
+		cfg, err := manager.Load()
+		if err != nil {
+			t.Fatalf("Load array string index_folders: %v", err)
+		}
+		if len(cfg.IndexFolders) != 2 || cfg.IndexFolders[0] != "~/dotfiles/*.zsh" || cfg.IndexFolders[1] != "!~/dotfiles/ignored.zsh" {
+			t.Errorf("unexpected index_folders: %+v", cfg.IndexFolders)
+		}
+	})
+}
