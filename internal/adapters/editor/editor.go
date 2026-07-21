@@ -19,37 +19,65 @@ func New(command string) *Adapter {
 	return &Adapter{Command: command}
 }
 
-// Open launches the editor with the provided file path.
-func (a Adapter) Open(path string) error {
+// BuildCmd constructs an *exec.Cmd for opening a file at a specific line in the configured editor.
+func (a Adapter) BuildCmd(path string, line int) (*exec.Cmd, error) {
 	command := ResolveCommand(a.Command)
 	if command == "" {
-		return errors.New("editor command is required")
+		return nil, errors.New("editor command is required")
 	}
-	return runEditorCommand(command, []string{path})
+
+	fields := strings.Fields(command)
+	if len(fields) == 0 {
+		return nil, errors.New("editor command is required")
+	}
+
+	base := fields[0]
+	var args []string
+	if len(fields) > 1 {
+		args = append(args, fields[1:]...)
+	}
+
+	if line > 0 {
+		if IsVim(command) {
+			args = append(args, fmt.Sprintf("+%d", line), path)
+		} else if IsNano(command) {
+			args = append(args, fmt.Sprintf("+%d", line), path)
+		} else if IsVSCode(command) {
+			args = append(args, "-g", fmt.Sprintf("%s:%d", path, line))
+		} else if IsEmacs(command) {
+			args = append(args, fmt.Sprintf("+%d", line), path)
+		} else {
+			args = append(args, path)
+		}
+	} else {
+		args = append(args, path)
+	}
+
+	return exec.Command(base, args...), nil
+}
+
+// Open launches the editor with the provided file path.
+func (a Adapter) Open(path string) error {
+	cmd, err := a.BuildCmd(path, 0)
+	if err != nil {
+		return err
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
 }
 
 // OpenAtLine opens a file at a specific line number.
 func (a Adapter) OpenAtLine(path string, line int) error {
-	command := ResolveCommand(a.Command)
-	if command == "" {
-		return errors.New("editor command is required")
+	cmd, err := a.BuildCmd(path, line)
+	if err != nil {
+		return err
 	}
-
-	if IsVim(command) {
-		return OpenVimAtLine(command, path, line)
-	}
-	if IsNano(command) {
-		return OpenNanoAtLine(command, path, line)
-	}
-	if IsVSCode(command) {
-		return OpenVSCodeAtLine(command, path, line)
-	}
-	if IsEmacs(command) {
-		return OpenEmacsAtLine(command, path, line)
-	}
-
-	// For unknown editors, just open normally
-	return a.Open(path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
 }
 
 // OpenAtEnd opens a file and positions the cursor at the end when supported.
