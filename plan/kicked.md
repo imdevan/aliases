@@ -7,9 +7,11 @@
     - notes: must not block shell startup; skip re-index if mtime unchanged
 
     ## Feature 8: `al search` command
-  - [ ] 8.1 Non-interactive search against sqlite index
-  - [ ] 8.2 Output matching aliases (name, value, description,location [grouped by file])
-  - [ ] 8.3 update interactive list to populate and search against sql index as well
+  - [x] 8.1 Non-interactive search against sqlite index
+    - [x] search across name, value, and description
+  - [x] 8.2 searches ending with "=" search for exact alias name
+  - [x] 8.3 Output matching aliases (name, value, description,location [grouped by file])
+  - [x] 8.4 update interactive list to populate and search against sql index as well
 
 ## Feature 11: Index folders
   - [ ] 11.1 Support glob patterns in `index_folders` config
