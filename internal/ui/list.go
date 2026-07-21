@@ -72,7 +72,7 @@ func ApplyListFilterStyles(model *list.Model, theme Theme) {
 	model.FilterInput.PromptStyle = model.FilterInput.PromptStyle.Foreground(theme.Secondary)
 	model.FilterInput.Cursor.Style = model.FilterInput.Cursor.Style.Foreground(theme.Secondary)
 	model.FilterInput.TextStyle = model.FilterInput.TextStyle.Foreground(theme.Text)
-	model.Styles.DefaultFilterCharacterMatch = model.Styles.DefaultFilterCharacterMatch.Foreground(theme.Secondary)
+	model.Styles.DefaultFilterCharacterMatch = model.Styles.DefaultFilterCharacterMatch.Foreground(theme.Secondary).Underline(false)
 }
 
 // NewListDelegate provides shared list focus styles.
@@ -88,8 +88,13 @@ func NewListDelegate(theme Theme, opts ListDelegateOptions) list.ItemDelegate {
 
 func newDefaultDelegate(theme Theme, opts ListDelegateOptions) list.DefaultDelegate {
 	delegate := list.NewDefaultDelegate()
+	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.Foreground(theme.Text)
+	delegate.Styles.NormalDesc = delegate.Styles.NormalDesc.Foreground(theme.Muted)
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.Foreground(theme.TextHighlight).BorderForeground(theme.Primary).Bold(true)
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.Foreground(theme.DescriptionHighlight).BorderForeground(theme.Primary)
+	delegate.Styles.DimmedTitle = delegate.Styles.DimmedTitle.Foreground(theme.Muted)
+	delegate.Styles.DimmedDesc = delegate.Styles.DimmedDesc.Foreground(theme.Muted)
+	delegate.Styles.FilterMatch = delegate.Styles.FilterMatch.Foreground(theme.Secondary).Underline(false)
 	
 	// Apply spacing configuration
 	spacing := opts.Spacing

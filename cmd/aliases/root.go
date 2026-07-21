@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/aliases/internal/adapters/editor"
@@ -373,12 +372,10 @@ type aliasItem struct {
 }
 
 func (a aliasItem) Title() string {
-	title := a.Alias.Name
 	if a.Alias.Description != "" {
-		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(a.Config.Muted))
-		title += " " + mutedStyle.Render("• "+a.Alias.Description)
+		return a.Alias.Name + " • " + a.Alias.Description
 	}
-	return title
+	return a.Alias.Name
 }
 
 func (a aliasItem) Description() string {
