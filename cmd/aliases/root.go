@@ -402,7 +402,7 @@ type aliasListModel struct {
 	editingAlias    string
 	pendingAction   string
 	pendingItem     aliasItem
-	pendingBookmark *domain.Alias
+	pendingAlias    *domain.Alias
 	screenW         int
 	screenH         int
 }
@@ -607,7 +607,7 @@ func (m aliasListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			exists, _ := m.manager.Exists(nameInput)
 			if exists {
 				m.pendingAction = "Overwrite"
-				m.pendingBookmark = &al
+				m.pendingAlias = &al
 				existing, _ := m.manager.Get(nameInput)
 				confirmModel := ui.NewConfirmationModel(
 					"Overwrite Alias",
@@ -895,15 +895,15 @@ func (m aliasListModel) executeAction() (tea.Model, tea.Cmd) {
 			m.updateTitle()
 		}
 	case "Overwrite":
-		if m.pendingBookmark != nil {
-			if err := m.manager.Add(*m.pendingBookmark); err != nil {
+		if m.pendingAlias != nil {
+			if err := m.manager.Add(*m.pendingAlias); err != nil {
 				m.message = fmt.Sprintf("✗ Failed to overwrite: %s", err)
 			} else {
-				m.message = fmt.Sprintf("✓ Overwritten: %s", m.pendingBookmark.Name)
+				m.message = fmt.Sprintf("✓ Overwritten: %s", m.pendingAlias.Name)
 				m.reloadList()
 				m.updateTitle()
 			}
-			m.pendingBookmark = nil
+			m.pendingAlias = nil
 		}
 	}
 	m.pendingAction = ""

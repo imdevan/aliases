@@ -32,16 +32,16 @@ func CanceledMessage(theme Theme, action ...string) string {
 		Render(titleStyled)
 }
 
-// SuccessMessage renders a confirmation message for bookmark add/edit/delete.
+// SuccessMessage renders a confirmation message for alias add/edit/delete.
 // action should be "created", "updated", or "deleted".
 // body is the pre-formatted content to display below the title.
 // inline renders title and body on one line without a border.
 func SuccessMessage(theme Theme, action, body string, inline bool) string {
 	if theme.PlainText {
-		return fmt.Sprintf("Bookmark %s: %s", action, body)
+		return fmt.Sprintf("Alias %s: %s", action, body)
 	}
 
-	title := fmt.Sprintf("%s Bookmark %s:", icon.Success, action)
+	title := fmt.Sprintf("%s Alias %s:", icon.Success, action)
 
 	titleStyled := lipgloss.NewStyle().Foreground(theme.Success).Bold(true).Render(title)
 	bodyStyled := lipgloss.NewStyle().Foreground(theme.Text).Render(body)
